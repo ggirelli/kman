@@ -425,8 +425,8 @@ def uniq_seq(k, record, allow_non_ACTUG = False, encountered = None,
             if kmer not in kset.keys():
                 header = ">%s pos%s%s:%d-%d" % (
                     name, fasta_delim, chrom, start, end)
-                if type(lambda x: x) == type(fmer):
-                    (header, kmer) = fmer((header, kmer))
+                if type(lambda x: x) == type(frec):
+                    (header, kmer) = frec((header, kmer))
                 kset[kmer] = header[1:]
             else:
                 del kset[kmer]
