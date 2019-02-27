@@ -46,22 +46,16 @@ def rc(seq, ab):
     rab = ab[1].strip().lower()
     ab = ab[0].strip().lower()
 
-    # Check provided string
     seq = seq.lower()
     for c in seq:
         if not c in ab:
             print('ERROR: provided string conflicts with the selected alphabet.')
             return
 
-    # Calculate reverse
+    ab = dict([(ab[ci], rab[ci]) for ci in range(len(ab))])
     r = seq[::-1]
-
-    # Calculate reverse complement
-    rc = r
-    for ci in range(len(ab)):
-        rc.replace(ab[ci], rab[ci])
-
-    return(rc.upper())
+    rc = "".join([ab[c] for c in r]).upper()
+    return(rc)
 
 def parallel_sets_union(plist, opath, threads = 1, progress = True,
     frec = None):
