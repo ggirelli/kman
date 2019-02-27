@@ -29,12 +29,11 @@ handler_limit = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
 
 # FUNCTIONS ====================================================================
 
-def rc(seq, ab, exc = None):
+def rc(seq, ab):
     '''
     Args:
         seq (string): nucleic acid sequence.
         ab (list): alphabet list, with letters and their reverse.
-        exc (string): string with exception letters.
 
     Return:
         string: reverse complement of seq.
@@ -45,9 +44,7 @@ def rc(seq, ab, exc = None):
     assert all([type("") == type(x) for x in ab])
 
     rab = ab[1].strip().lower()
-    rab += exc.lower() if not type(None) == type(exc) else ""
     ab = ab[0].strip().lower()
-    ab += exc.lower() if not type(None) == type(exc) else ""
 
     # Check provided string
     seq = seq.lower()
@@ -60,12 +57,11 @@ def rc(seq, ab, exc = None):
     r = seq[::-1]
 
     # Calculate reverse complement
-    rc = []
-    for c in r:
-        rc.append(rab[ab.index(c)])
-    rc=''.join([str(c) for c in rc]).upper()
+    rc = r
+    for ci in range(len(ab)):
+        rc.replace(ab[ci], rab[ci])
 
-    return(rc)
+    return(rc.toupper())
 
 def parallel_sets_union(plist, opath, threads = 1, progress = True,
     frec = None):
