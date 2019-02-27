@@ -53,6 +53,8 @@ parser.add_argument('-d', '--delim', type = str, nargs = 1, metavar = "sep",
     Default: "="''', default = ["="])
 
 # Add flags
+parser.add_argument('-R', dest = 'do_reverse', action = 'store_const',
+	const = True, default = False, help = '''Reverse complement sequences.''')
 parser.add_argument('-N', dest = 'allow_non_ACTUG', action = 'store_const',
 	const = True, default = False, help = '''Allow non ACTUG characters
 	(RYKMSWBDHVN) in the unique k-mers.''')
@@ -77,10 +79,15 @@ if not os.path.isdir(args.T[0]): os.mkdir(args.T[0])
 
 # RUN ==========================================================================
 
+reverseAB = None
+if args.do_reverse:
+	reverseAB = ["ACTUGN", "TGAACN"]
+
 tempfile.tempdir = args.T[0]
 kman.Kmer.uniq_fasta(args.k[0], args.input[0], args.output[0],
 	klim = args.b[0], threads = args.t[0], fasta_delim = args.delim[0],
-	allow_non_ACTUG = args.allow_non_ACTUG, progress = True)
+	allow_non_ACTUG = args.allow_non_ACTUG, progress = True,
+	reverseAB = reverseAB)
 
 print(" Done.")
 

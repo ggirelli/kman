@@ -29,6 +29,44 @@ handler_limit = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
 
 # FUNCTIONS ====================================================================
 
+def rc(seq, ab, exc = None):
+    '''
+    Args:
+        seq (string): nucleic acid sequence.
+        ab (list): alphabet list, with letters and their reverse.
+        exc (string): string with exception letters.
+
+    Return:
+        string: reverse complement of seq.
+    '''
+
+    assert type([]) == type(ab)
+    assert 2 == len(ab)
+    assert all([type("") == type(x) for x in ab])
+
+    rab = ab[1].strip().lower()
+    rab += exc.lower() if not type(None) == type(exc) else ""
+    ab = ab[0].strip().lower()
+    ab += exc.lower() if not type(None) == type(exc) else ""
+
+    # Check provided string
+    seq = seq.lower()
+    for c in seq:
+        if not c in ab:
+            print('ERROR: provided string conflicts with the selected alphabet.')
+            return
+
+    # Calculate reverse
+    r = seq[::-1]
+
+    # Calculate reverse complement
+    rc = []
+    for c in r:
+        rc.append(rab[ab.index(c)])
+    rc=''.join([str(c) for c in rc]).upper()
+
+    return(rc)
+
 def parallel_sets_union(plist, opath, threads = 1, progress = True,
     frec = None):
     '''Make union of sorted sets of kmers written to disk, in parallel.
@@ -255,7 +293,7 @@ def uniq_as_fasta(k, record, klim, threads = 1, allow_non_ACTUG = False,
 
 def uniq_fasta(k, fpath, opath, klim = 0, threads = 1, allow_non_ACTUG = False,
     encountered = None, progress = False, fasta_delim = "=", frec = None,
-    **kwargs):
+    reverseAB = None, **kwargs):
     '''Extract unique kmers from a FASTA file.
     Stores the list of uniqued kmers in memory for one FASTA record at a time.
 
@@ -295,10 +333,24 @@ def uniq_fasta(k, fpath, opath, klim = 0, threads = 1, allow_non_ACTUG = False,
     pargs = {'k':k, 'outdir':tmpdir, 'single':single,
         'fasta_delim':fasta_delim, 'frec':frec}
 
+    def recGenBase(IH):
+        for record in SimpleFastaParser(IH):
+            yield(record)
+    if not type(None) == type(reverseAB):
+        def recGen(IH):
+            for record in recGenBase(IH):
+                yield(record)
+                record[0] = f"rc_{record[0]}"
+                record[1] = rc(record[1], reverseAB)
+                yield(record)
+    else:
+        recGen = recGenBase
+
+
     # Parse FASTA records
     if 1 == threads or 0 != klim:
         # Either normally or in batches (and parallel)
-        for record in SimpleFastaParser(IH):
+        for record in recGen(IH):
             tplist.append(uniq_record(record,
                 klim = klim, threads = threads, progress = progress, **pargs))
     else:
@@ -307,7 +359,7 @@ def uniq_fasta(k, fpath, opath, klim = 0, threads = 1, allow_non_ACTUG = False,
         # In parallel
         tplist = Parallel(n_jobs = threads, verbose = verbose)(
             delayed(uniq_record)(record, progress = False, **pargs)
-            for record in SimpleFastaParser(IH))
+            for record in recGen(IH))
 
     # Remove None objects
     tplist = [p for p in tplist if type(None) != type(p)]
