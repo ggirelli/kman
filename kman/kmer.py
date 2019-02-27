@@ -88,7 +88,7 @@ def parallel_sets_union(plist, opath, threads = 1, progress = True,
     verbose = 11 if progress else 0     # Parallel verbosity
 
     # Calculate sorting batch size
-    batch_size = max(int(len(plist) / float(threads)), handler_limit - 24)
+    batch_size = min(int(len(plist) / float(threads)), handler_limit - 24)
 
     # Parallelized union
     if batch_size >= len(plist):
