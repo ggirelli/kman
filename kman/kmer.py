@@ -145,7 +145,6 @@ def sets_union(plist, opath = None, progress = False, headless = False,
             for record in SimpleFastaParser(IH):
                 yield(record)
 
-                    
     def write_seq(OH, record, c):
         '''Writes one sequence to a FASTA file.
 
@@ -336,12 +335,9 @@ def uniq_fasta(k, fpath, opath, klim = 0, threads = 1, allow_non_ACTUG = False,
         def recGen(IH):
             for record in recGenBase(IH):
                 yield(record)
-                record[0] = f"rc_{record[0]}"
-                record[1] = rc(record[1], reverseAB)
-                yield(record)
+                yield((f"rc_{record[0]}", rc(record[1], reverseAB)))
     else:
         recGen = recGenBase
-
 
     # Parse FASTA records
     if 1 == threads or 0 != klim:
