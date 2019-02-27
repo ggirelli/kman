@@ -61,7 +61,7 @@ def rc(seq, ab):
     for ci in range(len(ab)):
         rc.replace(ab[ci], rab[ci])
 
-    return(rc.toupper())
+    return(rc.upper())
 
 def parallel_sets_union(plist, opath, threads = 1, progress = True,
     frec = None):
