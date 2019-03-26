@@ -10,10 +10,20 @@ from enum import Enum
 class KJoiner(object):
 	"""docstring for KJoiner"""
 
-	class MODE(Enum):
+	class MODES(Enum):
 		UNIQUE = 1
 		SEQ_COUNT = 2
 		VCOUNT = 3
+	DEFAULT_MODE = MODES.UNIQUE
 
-	def __init__(self):
+	__mode = DEFAULT_MODE
+
+	def __init__(self, mode = None):
 		super(KJoiner, self).__init__()
+
+	@property
+	def mode():
+		return self.__mode
+
+	def join(self, batches):
+		pass
