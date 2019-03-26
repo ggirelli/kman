@@ -76,7 +76,7 @@ class FastaBatcher(Batcher):
 		Batches a fasta file up to the specified number (self.size) of k-mers.
 		
 		Arguments:
-			fasta {string} -- path to fasta file.
+			fasta {string} -- path to fasta file
 			k {int} -- length of k-mers
 		"""
 		assert os.path.isfile(fasta)
@@ -96,7 +96,9 @@ class RecordBatcher(Batcher):
 		A parent batcher class can be specified, whose attributes are inherited.
 		
 		Keyword Arguments:
-			parent {Batcher} -- [description] (default: {None})
+			size {int} -- batch size (overridden by parent.size)
+			parent {Batcher} -- parent batcher to inherit attributes from
+			                    (default: {None})
 		"""
 		if type(None) != type(parent):
 			self.__size = parent.size
@@ -107,6 +109,14 @@ class RecordBatcher(Batcher):
 		super(RecordBatcher, self).__init__(size)
 
 	def do(self, record, k):
+		"""Start batching a fasta record.
+		
+		Requires a fasta record with header and sequence.
+		
+		Arguments:
+			record {tuple} -- (header, sequence)
+			k {int} -- length of k-mers
+		"""
 		record_name = record[0].split(" ")[0]
 		for kmer in tqdm(Sequence.kmerator(
 			record[1], k, self.natype, record_name)):
