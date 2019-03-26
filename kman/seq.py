@@ -51,6 +51,9 @@ class KMer(Sequence):
 	@property
 	def seq(self):
 		return self.text
+
+	def as_fasta(self):
+		return ">%s\n%s\n" % (self.header, self.seq)
 	
 	def is_ab_checked(self):
 		"""Check if AB is fully respected.
