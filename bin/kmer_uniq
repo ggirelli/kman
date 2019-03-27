@@ -6,7 +6,10 @@ import os
 
 fasta = os.path.join("/mnt/data/COOLFISH/short.test.fa")
 #fasta = os.path.join("/mnt/data/Resources/references/Grch37.r75.dna/chromosomes/",
-#	"Homo_sapiens.GRCh37.75.dna.chromosome.19.fa")
+#	"Homo_sapiens.GRCh37.75.dna.chromosome.19.fa")#
+
 batcher = km.batch.FastaBatcher(size = 1e6, threads = 20)
 batcher.do(fasta, 30)
 
+joiner = km.join.KJoiner()
+joiner.join(batcher.batches, "/mnt/data/COOLFISH/short.test.out.fa")
