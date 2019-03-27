@@ -116,7 +116,6 @@ class Sequence(om.Sequence):
 				yield Sequence.kmerator(seq2beKmered, k, t, prefix,
 					prefix_start = i)
 
-
 class KMer(Sequence):
 	"""docstring for KMer"""
 
@@ -134,6 +133,12 @@ class KMer(Sequence):
 	@property
 	def seq(self):
 		return self.text
+
+	@staticmethod
+	def from_fasta(record, t = om.NATYPES.DNA):
+		chrom, coords = record[0].split(":")
+		start, end = [int(n) for n in coords.split("-")]
+		return KMer(chrom, start, end, record[1], t)
 
 	def as_fasta(self):
 		return ">%s\n%s\n" % (self.header, self.seq)
