@@ -22,7 +22,33 @@ class Sequence(om.Sequence):
 		"""
 		return self.kmerator(self.text, k, self.natype, self.name)
 
+	def batches(self, k, batchSize):
+		"""Split the sequence in batches ready to be fed to the kmerator.
+		
+		This is useful when parallelizing, due to the fact that generators
+		cannot be pickled and can cause problems when using a process-based
+		back-end. Instead, pass the sequences to the processes and run kmerator
+		there.
+		
+		Arguments:
+			seq {string} -- sequence to be batched
+			k {int} -- length of substrings for kmerator
+			batchSize {int} -- number of kmers per batch
+		"""
+		return self.batcher(self.text, k, batchSize)
+
 	def kmers_batched(self, k, batchSize = 1):
+		"""Extract batches of k-mers from Sequence.
+		
+		Arguments:
+			k {int} -- substring length
+
+		Keyword Arguments:
+			batchSize {number} -- number of k-mers per batch (default: {1})
+
+		Returns:
+			generator -- k-mer batch generator
+		"""
 		assert batchSize >= 1
 		if batchSize == 1:
 			return self.kmers(k)
@@ -33,22 +59,55 @@ class Sequence(om.Sequence):
 	@staticmethod
 	def kmerator(seq, k, t, prefix = "ref", prefix_start = 0):
 		"""Extract k-mers from seq.
-		Args:
+		
+		Arguments:
 			seq {string} -- input sequence
 			k {int} -- substring length
-		Returns:
-			generator -- kmer generator
+			t {om.NATYPES} -- nucleic acid type
+		
+		Keyword Arguments:
+			prefix {str} -- reference record name (default: {"ref"})
+			prefix_start {number} -- if this is a batch, current location for
+			                         shifting (default: {0})
 		"""
 		return (KMer(prefix, i+prefix_start, i+prefix_start+k, seq[i:i+k], t)
 				for i in range(len(seq)-k+1))
 
 	@staticmethod
 	def batcher(seq, k, batchSize):
+		"""Split the sequence in batches ready to be fed to the kmerator.
+		
+		This is useful when parallelizing, due to the fact that generators
+		cannot be pickled and can cause problems when using a process-based
+		back-end. Instead, pass the sequences to the processes and run kmerator
+		there.
+		
+		Arguments:
+			seq {string} -- sequence to be batched
+			k {int} -- length of substrings for kmerator
+			batchSize {int} -- number of kmers per batch
+		"""
 		for i in range(0, len(seq)-k+1, batchSize):
 			yield (seq[i:min(len(seq)-k+1, i+batchSize)], i)
 
 	@staticmethod
 	def kmerator_batched(seq, k, t, batchSize = 1, prefix = "ref"):
+		"""Extract batches of k-mers from seq.
+		
+		[description]
+		
+		Arguments:
+			seq {string} -- input sequence
+			k {int} -- substring length
+			t {om.NATYPES} -- nucleic acid type
+		
+		Keyword Arguments:
+			batchSize {number} -- number of kmers per batch (default: {1})
+			prefix {str} -- reference record name (default: {"ref"})
+		
+		Returns:
+			generator -- k-mer batch generator
+		"""
 		assert batchSize >= 1
 		if batchSize == 1:
 			return Sequence.kmerator(seq, k, t, prefix)
