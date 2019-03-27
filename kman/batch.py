@@ -79,14 +79,16 @@ class BatcherThreading(Batcher):
 	def threads(self, t):
 		self.__threads = check_threads(t)
 
-	def feed_batches(self, batchList, replace = False):
-		assert all([type(x) == self.type for x in batchList])
+	def feed_batches(self, batches, replace = False):
+		assert all([b.type == self.type for b in batches])
 		if replace:
-			self._batches = batchList
+			self._batches = batches
 		else:
-			for batch in tqdm(batchList):
+			for bi in tqdm(range(len(batches))):
+				batch = batches.pop()
 				for record in batch.record_gen():
 					self.add_record(record)
+				batch.reset()
 
 class FastaBatcher(BatcherThreading):
 	"""docstring for FastaBatcher"""
@@ -119,6 +121,7 @@ class FastaBatcher(BatcherThreading):
 		with open(fasta, "r+") as FH:
 			for record in SimpleFastaParser(FH):
 				batcher.do(record, k)
+				self.feed_batches(batcher.batches)
 
 class RecordBatcher(BatcherThreading):
 	"""docstring for RecordBatcher"""
@@ -162,20 +165,17 @@ class RecordBatcher(BatcherThreading):
 				if kmer.is_ab_checked():
 					self.add_record(kmer)
 		else:
-			#assert self.threads == 1, "parallelization not implemented yet."
-			seqBatchGen = Sequence.batcher(record[1], k, self.size)
-
-			batchList = Parallel(n_jobs = self.threads, verbose = 11
+			batches = Parallel(n_jobs = self.threads, verbose = 11
 				)(delayed(build_batch_for_parallel
-					)(seq, record_name, k, self, i) for (seq, i) in seqBatchGen)
-			
-			self.feed_batches(batchList)
+					)(seq, record_name, k, self, i)
+					for (seq, i) in Sequence.batcher(record[1], k, self.size))
+			self.feed_batches(batches, True)
 
 def build_batch_for_parallel(seq, name, k, batcher, i = 0):
 	batch = Batch(batcher)
 	recordGen = Sequence.kmerator(seq, k, batcher.natype, name, i)
 	batch.add_all((k for k in recordGen if k.is_ab_checked()))
-	batch.write()
+	batch.write(doSort = True)
 	return batch
 
 class Batch(object):
@@ -217,23 +217,24 @@ class Batch(object):
 		return self.__tmp
 	@property
 	def info(self):
-		return "%s\ntype: %s\nsize: %d\ni: %d\nremaining: %d" %(self.tmp,
-			self.type, self.size, self.current_size, self.remaining)
+		info = "%s\ntype: %s\nsize: %d" % (self.tmp, self.type, self.size)
+		info += "\ni: %d\nremaining: %d" %(self.current_size, self.remaining)
+		info += "\nwritten: %r\n" % self.is_written
+		return info
 
 	@property
-	def sorted(self):
-		if self.is_written:
-			return sorted(self.record_gen(), key = lambda x: x[1])
-		else:
-			return sorted(self.record_gen(), key = lambda x: x.seq)
+	def sorted(self, keyAttr = "seq"):
+		return sorted(self.record_gen(), key = lambda x: getattr(x, keyAttr))
 
 	def record_gen(self):
 		if self.is_written:
 			with open(self.tmp, "r+") as TH:
-				TH.seek(0)
-				return (r for r in SimpleFastaParser(TH))
+				for record in SimpleFastaParser(TH):
+					yield KMer.from_fasta(record)
 		else:
-			return (r for r in self.__records)
+			for record in self.__records:
+				if not type(None) == type(record):
+					yield record
 
 	def add(self, record):
 		"""Add a record to the current batch.
@@ -256,7 +257,7 @@ class Batch(object):
 		for record in recordGen:
 			self.add(record)
 
-	def to_write(self, f = "as_fasta"):
+	def to_write(self, f = "as_fasta", doSort = False):
 		"""Generator of writeable records.
 		
 		Generator function that converts batch records into writeable ones.
@@ -265,14 +266,25 @@ class Batch(object):
 			f {str} -- name of record in-built function for writeable format]
 			           (default: {"as_fasta"})
 		"""
-		return (getattr(r, f)() for r in self.__records
-			if not type(None) == type(r))
+		if doSort:
+			return (getattr(r, f)() for r in self.sorted
+				if not type(None) == type(r))
+		else:
+			return (getattr(r, f)() for r in self.record_gen()
+				if not type(None) == type(r))
 
-	def write(self, f = "as_fasta"):
+	def write(self, f = "as_fasta", doSort = False):
 		with open(self.tmp, "w+") as TH:
-			TH.write("".join(self.to_write(f)))
+			TH.write("".join(self.to_write(f, doSort)))
 		self.__records = None
 		self.__written = True
+
+	def reset(self):
+		os.remove(self.tmp)
+		self.__written = False
+		self.__i = 0
+		self.__remaining = self.size
+		self.__records = [None] * self.__size
 
 	def is_full(self):
 		return 0 == self.remaining
