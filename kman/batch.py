@@ -6,8 +6,10 @@
 '''
 
 from Bio.SeqIO.FastaIO import SimpleFastaParser
+from ggc.args import check_threads
 import io
 from kman.seq import KMer, Sequence
+from joblib import Parallel, delayed
 import oligo_melting as om
 import os
 import tempfile
@@ -18,13 +20,11 @@ class Batcher(object):
 	"""docstring for Batcher"""
 
 	DEFAULT_BATCH_SIZE = 1e6
-	DEFAULT_BATCH_JOIN_SIZE = 10
 	DEFAULT_BATCH_TYPE = KMer
 	DEFAULT_NATYPE = om.NATYPES.DNA
 
 	_tmp = None
 	_batches = None
-	__batch_join_size = DEFAULT_BATCH_JOIN_SIZE
 	__size = DEFAULT_BATCH_SIZE
 	__type = DEFAULT_BATCH_TYPE
 	__natype = DEFAULT_NATYPE
@@ -64,11 +64,36 @@ class Batcher(object):
 		self.new_batch() # Add new batch if needed
 		self.batches[-1].add(record)
 
-class FastaBatcher(Batcher):
+class BatcherThreading(Batcher):
+	"""docstring for BatcherThreading"""
+
+	__threads = 1
+
+	def __init__(self, threads = 1, size = None):
+		super(BatcherThreading, self).__init__(size)
+		self.threads = threads
+
+	@property
+	def threads(self):
+		return self.__threads
+	@threads.setter
+	def threads(self, t):
+		self.__threads = check_threads(t)
+
+class FastaBatcher(BatcherThreading):
 	"""docstring for FastaBatcher"""
 
-	def __init__(self, size = None):
-		super(FastaBatcher, self).__init__(size)
+	def __init__(self, threads = 1, size = None):
+		"""Initialize FastaBatcher instance.
+		
+		A parent batcher class can be specified, whose attributes are inherited.
+		
+		Keyword Arguments:
+			threads {int} -- number of threads for parallelization
+			                 (overridden by parent.threads)
+			size {int} -- batch size (overridden by parent.size)
+		"""
+		super(FastaBatcher, self).__init__(threads, size)
 
 	def do(self, fasta, k):
 		"""Start batching the fasta file.
@@ -87,15 +112,18 @@ class FastaBatcher(Batcher):
 			for record in SimpleFastaParser(FH):
 				batcher.do(record, k)
 
-class RecordBatcher(Batcher):
+class RecordBatcher(BatcherThreading):
 	"""docstring for RecordBatcher"""
 
-	def __init__(self, size = None, parent = None):
+
+	def __init__(self, threads = 1, size = None, parent = None):
 		"""Initialize RecordBatcher instance.
 		
 		A parent batcher class can be specified, whose attributes are inherited.
 		
 		Keyword Arguments:
+			threads {int} -- number of threads for parallelization
+			                 (overridden by parent.threads)
 			size {int} -- batch size (overridden by parent.size)
 			parent {Batcher} -- parent batcher to inherit attributes from
 			                    (default: {None})
@@ -103,10 +131,12 @@ class RecordBatcher(Batcher):
 		if type(None) != type(parent):
 			self.__size = parent.size
 			size = parent.size
+			self.threads = parent.threads
+			threads = parent.threads
 			self.__natype = parent.natype
 			self._batches = parent.batches
 			self._tmp = parent.tmp
-		super(RecordBatcher, self).__init__(size)
+		super(RecordBatcher, self).__init__(threads, size)
 
 	def do(self, record, k):
 		"""Start batching a fasta record.
@@ -117,11 +147,16 @@ class RecordBatcher(Batcher):
 			record {tuple} -- (header, sequence)
 			k {int} -- length of k-mers
 		"""
-		record_name = record[0].split(" ")[0]
-		for kmer in tqdm(Sequence.kmerator(
-			record[1], k, self.natype, record_name)):
-			if kmer.is_ab_checked():
-				self.add_record(kmer)
+		kmerGen = Sequence.kmerator(record[1], k,
+			self.natype, record[0].split(" ")[0])
+		if 1 == self.threads:
+			for kmer in tqdm(kmerGen):
+				if kmer.is_ab_checked():
+					self.add_record(kmer)
+		else:
+			Parallel(n_jobs = self.threads, verbose = 11,
+				require = "sharedmem")(delayed(self.add_record)(kmer)
+	            for kmer in kmerGen if kmer.is_ab_checked())
 
 class Batch(object):
 	"""docstring for Batch"""
