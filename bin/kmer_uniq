@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 import kman as km
+import oligo_melting as om
 import os
 
-fasta = os.path.join(
-	"/mnt/data/Resources/references/Grch37.r75.dna/chromosomes",
-	"Homo_sapiens.GRCh37.75.dna.chromosome.19.fa")
-batcher = km.batch.FastaBatcher(size = 1e7, threads = 20)
+fasta = os.path.join("/mnt/data/COOLFISH/short.test.fa")
+#fasta = os.path.join("/mnt/data/Resources/references/Grch37.r75.dna/chromosomes/",
+#	"Homo_sapiens.GRCh37.75.dna.chromosome.19.fa")
+batcher = km.batch.FastaBatcher(size = 1e6, threads = 20)
 batcher.do(fasta, 30)
 

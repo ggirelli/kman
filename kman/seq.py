@@ -20,10 +20,18 @@ class Sequence(om.Sequence):
 		Returns:
 			generator -- kmer generator
 		"""
-		return self.kmerator(self.text, k, self.natype)
+		return self.kmerator(self.text, k, self.natype, self.name)
+
+	def kmers_batched(self, k, batchSize = 1):
+		assert batchSize >= 1
+		if batchSize == 1:
+			return self.kmers(k)
+		else:
+			return self.kmerator_batched(self.text, k, self.natype,
+				batchSize, self.name)
 
 	@staticmethod
-	def kmerator(seq, k, t, name = "ref"):
+	def kmerator(seq, k, t, prefix = "ref", prefix_start = 0):
 		"""Extract k-mers from seq.
 		Args:
 			seq {string} -- input sequence
@@ -31,8 +39,24 @@ class Sequence(om.Sequence):
 		Returns:
 			generator -- kmer generator
 		"""
-		return (KMer(name, i, i+k, seq[i:i+k], t)
-			for i in range(len(seq)-k+1))
+		return (KMer(prefix, i+prefix_start, i+prefix_start+k, seq[i:i+k], t)
+				for i in range(len(seq)-k+1))
+
+	@staticmethod
+	def batcher(seq, k, batchSize):
+		for i in range(0, len(seq)-k+1, batchSize):
+			yield (seq[i:min(len(seq)-k+1, i+batchSize)], i)
+
+	@staticmethod
+	def kmerator_batched(seq, k, t, batchSize = 1, prefix = "ref"):
+		assert batchSize >= 1
+		if batchSize == 1:
+			return Sequence.kmerator(seq, k, t, prefix)
+		else:
+			for (seq2beKmered, i) in Sequence.batcher(seq, k, batchSize):
+				yield Sequence.kmerator(seq2beKmered, k, t, prefix,
+					prefix_start = i)
+
 
 class KMer(Sequence):
 	"""docstring for KMer"""

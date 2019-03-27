@@ -7,19 +7,18 @@
 
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 from ggc.args import check_threads
-import io
 from kman.seq import KMer, Sequence
 from joblib import Parallel, delayed
 import oligo_melting as om
 import os
 import tempfile
-from time import time
+import time
 from tqdm import tqdm
 
 class Batcher(object):
 	"""docstring for Batcher"""
 
-	DEFAULT_BATCH_SIZE = 1e6
+	DEFAULT_BATCH_SIZE = int(1e6)
 	DEFAULT_BATCH_TYPE = KMer
 	DEFAULT_NATYPE = om.NATYPES.DNA
 
@@ -31,11 +30,9 @@ class Batcher(object):
 
 	def __init__(self, size = None):
 		super(Batcher, self).__init__()
-		if type(None) == type(self.tmp):
-			self._tmp = tempfile.TemporaryDirectory(prefix = "kmanBatch")
 		if type(None) != type(size):
 			assert size >= 1
-			self.__size = size
+			self.__size = int(size)
 		if type(None) == type(self._batches):
 			self._batches = [Batch(self)]
 
@@ -53,6 +50,8 @@ class Batcher(object):
 		return self._batches
 	@property
 	def tmp(self):
+		if type(None) == type(self._tmp):
+			self._tmp = tempfile.TemporaryDirectory(prefix = "kmanBatch")
 		return self._tmp
 
 	def new_batch(self):
@@ -79,6 +78,15 @@ class BatcherThreading(Batcher):
 	@threads.setter
 	def threads(self, t):
 		self.__threads = check_threads(t)
+
+	def feed_batches(self, batchList, replace = False):
+		assert all([type(x) == self.type for x in batchList])
+		if replace:
+			self._batches = batchList
+		else:
+			for batch in tqdm(batchList):
+				for record in batch.record_gen():
+					self.add_record(record)
 
 class FastaBatcher(BatcherThreading):
 	"""docstring for FastaBatcher"""
@@ -147,31 +155,47 @@ class RecordBatcher(BatcherThreading):
 			record {tuple} -- (header, sequence)
 			k {int} -- length of k-mers
 		"""
-		kmerGen = Sequence.kmerator(record[1], k,
-			self.natype, record[0].split(" ")[0])
+		record_name = record[0].split(" ")[0]
 		if 1 == self.threads:
+			kmerGen = Sequence.kmerator(record[1], k, self.natype, record_name)
 			for kmer in tqdm(kmerGen):
 				if kmer.is_ab_checked():
 					self.add_record(kmer)
 		else:
-			Parallel(n_jobs = self.threads, verbose = 11,
-				require = "sharedmem")(delayed(self.add_record)(kmer)
-	            for kmer in kmerGen if kmer.is_ab_checked())
+			#assert self.threads == 1, "parallelization not implemented yet."
+			seqBatchGen = Sequence.batcher(record[1], k, self.size)
+
+			batchList = Parallel(n_jobs = self.threads, verbose = 11
+				)(delayed(build_batch_for_parallel
+					)(seq, record_name, k, self, i) for (seq, i) in seqBatchGen)
+			
+			self.feed_batches(batchList)
+
+def build_batch_for_parallel(seq, name, k, batcher, i = 0):
+	batch = Batch(batcher)
+	recordGen = Sequence.kmerator(seq, k, batcher.natype, name, i)
+	batch.add_all((k for k in recordGen if k.is_ab_checked()))
+	batch.write()
+	return batch
 
 class Batch(object):
 	"""docstring for Batch"""
 	
 	__written = False
+	__i = 0
 
 	def __init__(self, batcher):
 		super(Batch, self).__init__()
 		assert batcher.size >= 1
 		self.__size = int(batcher.size)
+		self.__remaining = self.__size
 		self.__records = [None] * self.__size
-		self.__i = 0
 		self.__type = batcher.type
-		self.__tmp = tempfile.NamedTemporaryFile(mode = "w+",
-			dir = batcher.tmp.name, prefix = str(hash(time())), suffix = ".fa")
+		with tempfile.NamedTemporaryFile(mode = "w+",
+			dir = batcher.tmp.name,
+			prefix = str(hash(time.time())),
+			suffix = ".fa") as TH:
+			self.__tmp = TH.name
 
 	@property
 	def is_written(self):
@@ -183,12 +207,19 @@ class Batch(object):
 	def size(self):
 		return self.__size
 	@property
+	def remaining(self):
+		return self.__remaining
+	@property
 	def type(self):
 		return self.__type
 	@property
 	def tmp(self):
-		return self.__tmp.name
-	
+		return self.__tmp
+	@property
+	def info(self):
+		return "%s\ntype: %s\nsize: %d\ni: %d\nremaining: %d" %(self.tmp,
+			self.type, self.size, self.current_size, self.remaining)
+
 	@property
 	def sorted(self):
 		if self.is_written:
@@ -198,8 +229,9 @@ class Batch(object):
 
 	def record_gen(self):
 		if self.is_written:
-			self.__tmp.seek(0)
-			return (r for r in SimpleFastaParser(self.__tmp))
+			with open(self.tmp, "r+") as TH:
+				TH.seek(0)
+				return (r for r in SimpleFastaParser(TH))
 		else:
 			return (r for r in self.__records)
 
@@ -214,10 +246,15 @@ class Batch(object):
 		"""
 		assert not self.is_written, "this batch has been stored locally."
 		assert not self.is_full(), "this batch is full."
-		assert type(record) == self.type, "record must be %s, not %s" % (
+		assert type(record) == self.type, "record must be %s, not %s." % (
 			self.type, type(record))
 		self.__records[self.__i] = record
 		self.__i += 1
+		self.__remaining -= 1
+
+	def add_all(self, recordGen):
+		for record in recordGen:
+			self.add(record)
 
 	def to_write(self, f = "as_fasta"):
 		"""Generator of writeable records.
@@ -232,9 +269,10 @@ class Batch(object):
 			if not type(None) == type(r))
 
 	def write(self, f = "as_fasta"):
-		self.__tmp.write("".join(self.to_write(f)))
+		with open(self.tmp, "w+") as TH:
+			TH.write("".join(self.to_write(f)))
 		self.__records = None
 		self.__written = True
 
 	def is_full(self):
-		return self.current_size == self.__size
+		return 0 == self.remaining
