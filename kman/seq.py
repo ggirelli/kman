@@ -88,7 +88,7 @@ class Sequence(om.Sequence):
 			batchSize {int} -- number of kmers per batch
 		"""
 		for i in range(0, len(seq)-k+1, batchSize):
-			yield (seq[i:min(len(seq)-k+1, i+batchSize)], i)
+			yield (seq[max(i, i-k+1):min(len(seq)-k+1, i+batchSize)], i)
 
 	@staticmethod
 	def kmerator_batched(seq, k, t, batchSize = 1, prefix = "ref"):
