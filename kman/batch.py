@@ -6,6 +6,7 @@
 '''
 
 from Bio.SeqIO.FastaIO import SimpleFastaParser
+from enum import Enum
 from ggc.args import check_threads
 from kman.seq import KMer, Sequence
 from joblib import Parallel, delayed
@@ -66,6 +67,11 @@ class Batcher(object):
 class BatcherThreading(Batcher):
 	"""docstring for BatcherThreading"""
 
+	class FEED_MODES(Enum):
+		REPLACE = 1
+		FLOW = 2
+		APPEND = 3
+
 	__threads = 1
 
 	def __init__(self, threads = 1, size = None):
@@ -79,16 +85,18 @@ class BatcherThreading(Batcher):
 	def threads(self, t):
 		self.__threads = check_threads(t)
 
-	def feed_batches(self, batches, replace = False):
+	def feed_batches(self, batches, mode = FEED_MODES.FLOW):
 		assert all([b.type == self.type for b in batches])
-		if replace:
+		if mode == self.FEED_MODES.REPLACE:
 			self._batches = batches
-		else:
+		elif mode == self.FEED_MODES.FLOW:
 			for bi in tqdm(range(len(batches))):
 				batch = batches.pop()
 				for record in batch.record_gen():
 					self.add_record(record)
 				batch.reset()
+		elif mode == self.FEED_MODES.APPEND:
+			self.batches.extend(batches)
 
 class FastaBatcher(BatcherThreading):
 	"""docstring for FastaBatcher"""
@@ -121,7 +129,7 @@ class FastaBatcher(BatcherThreading):
 		with open(fasta, "r+") as FH:
 			for record in SimpleFastaParser(FH):
 				batcher.do(record, k)
-				self.feed_batches(batcher.batches)
+				self.feed_batches(batcher.batches, self.FEED_MODES.APPEND)
 
 class RecordBatcher(BatcherThreading):
 	"""docstring for RecordBatcher"""
@@ -169,7 +177,7 @@ class RecordBatcher(BatcherThreading):
 				)(delayed(build_batch_for_parallel
 					)(seq, record_name, k, self, i)
 					for (seq, i) in Sequence.batcher(record[1], k, self.size))
-			self.feed_batches(batches, True)
+			self.feed_batches(batches, self.FEED_MODES.REPLACE)
 
 def build_batch_for_parallel(seq, name, k, batcher, i = 0):
 	batch = Batch(batcher)
