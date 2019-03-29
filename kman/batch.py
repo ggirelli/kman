@@ -16,7 +16,7 @@ import tempfile
 import time
 from tqdm import tqdm
 
-class Batcher(object):
+class BatcherBase(object):
 	"""docstring for Batcher"""
 
 	DEFAULT_BATCH_SIZE = int(1e6)
@@ -64,7 +64,7 @@ class Batcher(object):
 		self.new_batch() # Add new batch if needed
 		self.batches[-1].add(record)
 
-class BatcherThreading(Batcher):
+class BatcherThreading(BatcherBase):
 	"""docstring for BatcherThreading"""
 
 	class FEED_MODES(Enum):
