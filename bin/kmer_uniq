@@ -4,12 +4,23 @@ import kman as km
 import oligo_melting as om
 import os
 
-fasta = os.path.join("/mnt/data/COOLFISH/short.test.fa")
-#fasta = os.path.join("/mnt/data/Resources/references/Grch37.r75.dna/chromosomes/",
-#	"Homo_sapiens.GRCh37.75.dna.chromosome.19.fa")#
+# fasta = os.path.join("/mnt/data/COOLFISH/short.test.fa")
+# #fasta = os.path.join("/mnt/data/Resources/references/Grch37.r75.dna/chromosomes/",
+# #	"Homo_sapiens.GRCh37.75.dna.chromosome.19.fa")#
 
-batcher = km.batch.FastaBatcher(size = 1e6, threads = 20)
-batcher.do(fasta, 30)
+# batcher = km.batch.FastaBatcher(size = 1e6, threads = 20)
+# batcher.do(fasta, 30)
 
-joiner = km.join.KJoiner()
-joiner.join(batcher.batches, "/mnt/data/COOLFISH/short.test.out.fa")
+# joiner = km.join.KJoiner()
+# #joiner.join(batcher.batches, "/mnt/data/COOLFISH/short.test.out.fa")
+# #joiner.mode = joiner.MODES.SEQ_COUNT
+# #joiner.join(batcher.batches, "/mnt/data/COOLFISH/short.test.out.txt")
+# joiner.mode = joiner.MODES.VEC_COUNT
+# joiner.join(batcher.batches, "/mnt/data/COOLFISH/short.test.out")
+
+t = km.join.RecordStorage("test.bin")
+print(t.get_count(27))
+print(t.get_count(127))
+print(t.get_count(227))
+
+
