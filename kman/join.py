@@ -72,7 +72,7 @@ class KJoiner(object):
 		if self.mode != self.MODES.VEC_COUNT:
 			OH = open(outpath, "w+")
 		else:
-			kwargs["storage"] = RecordStorage()
+			kwargs["storage"] = AbundanceVector()
 
 		first_record = next(crawler)
 		current_seq = first_record[1]
@@ -110,13 +110,13 @@ class KJoiner(object):
 			name, start, end = m.group("name", "start", "end")
 			storage.add_count(name, "+", int(start), hcount)
 
-class RecordStorage(object):
-	"""docstring for RecordStorage"""
+class AbundanceVector(object):
+	"""docstring for AbundanceVector"""
 
 	__data = {}
 
 	def __init__(self):
-		super(RecordStorage, self).__init__()
+		super(AbundanceVector, self).__init__()
 
 	@property
 	def data(self):
