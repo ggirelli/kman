@@ -167,7 +167,7 @@ class KJoiner(object):
 class KJoinerThreading(object):
 	"""docstring for KJoinerThreading"""
 
-	_threads = 0
+	_threads = 1
 
 	def __init__(self, mode = None):
 		super().__init__(mode)
@@ -179,9 +179,28 @@ class KJoinerThreading(object):
 	def threads(self, t):
 		self.__threads = check_threads(t)
 
+	def __intermediate_counts(self, batches):
+		# Join subset of batches into intermediate table with format:
+		# sequence | space-separated-headers
+		pass
+
+	def __join_intermediates(self):
+		# Join intermediates
+		pass
+
+	def join(self, batches, outpath, doSort = False):
+		if 1 == self.threads:
+			super().join(batches, outpath, doSort)
+		else:
+			#self.__intermediate_counts(batches)
+			#self.__join_intermediates()
+			#self.join_function()
+			pass
+
 class AbundanceVector(object):
 	"""docstring for AbundanceVector"""
 
+	"""{ref:{strand:np.1darray}}"""
 	__data = {}
 
 	def __init__(self):
