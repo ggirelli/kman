@@ -6,8 +6,9 @@
 '''
 
 from enum import Enum
-from heapq import merge
+from ggc.args import check_threads
 import gzip
+from heapq import merge
 import io
 from kman.batch import Batch
 import numpy as np
@@ -20,6 +21,16 @@ class KJoiner(object):
 	"""docstring for KJoiner"""
 
 	class MODES(Enum):
+		"""Modes of joining.
+		
+		Extends:
+			Enum
+		
+		Variables:
+			UNIQUE {number} -- preserve only unique sequences
+			SEQ_COUNT {number} -- count sequences
+			VEC_COUNT {number} -- produce abundance vector
+		"""
 		UNIQUE = 1
 		SEQ_COUNT = 2
 		VEC_COUNT = 3
@@ -29,7 +40,12 @@ class KJoiner(object):
 	__join_function = None
 
 	def __init__(self, mode = None):
-		super(KJoiner, self).__init__()
+		"""Initialize KJoiner.
+		
+		Keyword Arguments:
+			mode {KJoiner.MODES} -- (default: {None})
+		"""
+		super().__init__()
 		if type(mode) != type(None):
 			assert mode in self.MODES
 			self.__mode = mode
@@ -56,6 +72,18 @@ class KJoiner(object):
 			self.__join_function = self.__join_vector_count
 
 	def join(self, batches, outpath, doSort = False):
+		"""Join batches.
+		
+		Perform k-joining of batches.
+		
+		Arguments:
+			batches {list} -- list of Batch instances
+			outpath {str} -- path to output file
+		
+		Keyword Arguments:
+			doSort {bool} -- whether batches need to be sorted
+			                 (default: {False})
+		"""
 		assert all([type(b) == Batch for b in batches])
 		if doSort:
 			generators = [((r.header, r.seq) for r in b.sorted)
@@ -72,7 +100,7 @@ class KJoiner(object):
 		if self.mode != self.MODES.VEC_COUNT:
 			OH = open(outpath, "w+")
 		else:
-			kwargs["storage"] = AbundanceVector()
+			kwargs["vector"] = AbundanceVector()
 
 		first_record = next(crawler)
 		current_seq = first_record[1]
@@ -88,27 +116,53 @@ class KJoiner(object):
 		if self.mode != self.MODES.VEC_COUNT:
 			OH.close()
 		else:
-			kwargs['storage'].write_to(OH)
+			kwargs['vector'].write_to(OH)
 
 	def __join_unique(self, OH, headers, seq, **kwargs):
+		"""Perform unique joining.
+		
+		Retains only unique records.
+		
+		Arguments:
+			OH {io.TextIOWrapper} -- buffer to ouptut file
+			headers {list} -- list of headers with seq
+			seq {str} -- sequence
+		"""
 		if len(headers) == 1:
 			batch = (headers[0], seq)
 			OH.write(">%s\n%s\n" % batch)
 			return(batch)
 
 	def __join_sequence_count(self, OH, headers, seq, **kwargs):
+		"""Perform sequence counting through joining.
+		
+		Counts sequence occurrences.
+		
+		Arguments:
+			OH {io.TextIOWrapper} -- buffer to output file
+			headers {list} -- list of headers with seq
+			seq {str} -- sequence
+		"""
 		batch = (seq, len(headers))
 		OH.write("%s\t%d\n" % batch)
 		return(batch)
 
-	def __join_vector_count(self, OH, headers, seq, storage, **kwargs):
+	def __join_vector_count(self, OH, headers, seq, vector, **kwargs):
+		"""Generate abundance vectors through joining.
+		
+		Arguments:
+			OH {io.TextIOWrapper} -- buffer to output file
+			headers {list} -- list of headers with seq
+			seq {str} -- sequence
+			vector {AbundanceVector}
+		"""
 		regexp = re.compile(
 			r'^(?P<name>[a-zA-Z0-9\\.]+):(?P<start>[0-9]+)-(?P<end>[0-9]+)$')
 		hcount = len(headers)
 		for header in headers:
 			m = regexp.search(header)
 			name, start, end = m.group("name", "start", "end")
-			storage.add_count(name, "+", int(start), hcount)
+			vector.add_count(name, "+", int(start), hcount)
 
 class AbundanceVector(object):
 	"""docstring for AbundanceVector"""
@@ -116,13 +170,25 @@ class AbundanceVector(object):
 	__data = {}
 
 	def __init__(self):
-		super(AbundanceVector, self).__init__()
+		super().__init__()
 
 	@property
 	def data(self):
 		return self.__data
 
 	def add_count(self, ref, strand, pos, count, replace = False):
+		"""Add occurrence count to the vector.
+		
+		Arguments:
+			ref {str} -- reference record name
+			strand {str} -- strand type
+			pos {int} -- position on ref:strand
+			count {int} -- occurrence count
+		
+		Keyword Arguments:
+			replace {bool} -- whether to allow for replacement of non-zero
+			                  counts (default: {False})
+		"""
 		self.add_ref(ref, strand, pos + 1)
 		if not replace:
 			assert_msg = "cannot update a non-zero count without replace."
@@ -131,6 +197,16 @@ class AbundanceVector(object):
 		self.__data[ref][strand][pos] = count
 
 	def add_ref(self, ref, strand, size):
+		"""Add/resize reference:strand vector.
+		
+		Adds a new reference:strand vector of given size  if absent, or resizes
+		the current one is size is greater than the current one.
+		
+		Arguments:
+			ref {str} -- reference record name
+			strand {str} -- strand type
+			size {int} -- new size
+		"""
 		if not ref in self.__data.keys():
 			self.__data[ref] = {}
 		if not strand in self.__data[ref].keys():
@@ -139,6 +215,13 @@ class AbundanceVector(object):
 			self.__data[ref][strand].resize(size)
 
 	def write_to(self, dirpath):
+		"""Write AbundanceVectors to a folder.
+
+		The extension is removed from dirpath before proceeding.
+		
+		Arguments:
+			dirpath {str} -- path to output directory.
+		"""
 		dirpath = os.path.splitext(dirpath)[0]
 		assert not os.path.isfile(dirpath)
 		print('Writing output in "%s"' % dirpath)

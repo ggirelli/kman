@@ -11,7 +11,7 @@ class Sequence(om.Sequence):
 	"""docstring for Sequence"""
 
 	def __init__(self, seq, t, name = None):
-		super(Sequence, self).__init__(seq, t, name)
+		super().__init__(seq, t, name)
 
 	def kmers(self, k):
 		"""Extract k-mers from Sequence.
@@ -94,8 +94,6 @@ class Sequence(om.Sequence):
 	def kmerator_batched(seq, k, t, batchSize = 1, prefix = "ref"):
 		"""Extract batches of k-mers from seq.
 		
-		[description]
-		
 		Arguments:
 			seq {string} -- input sequence
 			k {int} -- substring length
@@ -120,7 +118,7 @@ class KMer(Sequence):
 	"""docstring for KMer"""
 
 	def __init__(self, chrom, start, end, seq, t = om.NATYPES.DNA):
-		super(KMer, self).__init__(seq, t)
+		super().__init__(seq, t)
 		assert start >= 0
 		assert end >= 0
 		self.__chrom = chrom
@@ -136,11 +134,23 @@ class KMer(Sequence):
 
 	@staticmethod
 	def from_fasta(record, t = om.NATYPES.DNA):
+		"""Reads a KMer from a Fasta record.
+		
+		Arguments:
+			record {tuple} -- (header, seq)
+		
+		Keyword Arguments:
+			t {om.NATYPES} -- nucleic acid type (default: {om.NATYPES.DNA})
+		
+		Returns:
+			KMer
+		"""
 		chrom, coords = record[0].split(":")
 		start, end = [int(n) for n in coords.split("-")]
 		return KMer(chrom, start, end, record[1], t)
 
 	def as_fasta(self):
+		"""Fasta-like representation."""
 		return ">%s\n%s\n" % (self.header, self.seq)
 	
 	def is_ab_checked(self):

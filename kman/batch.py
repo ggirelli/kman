@@ -30,7 +30,12 @@ class BatcherBase(object):
 	__natype = DEFAULT_NATYPE
 
 	def __init__(self, size = None):
-		super(BatcherBase, self).__init__()
+		"""Initializes BatcherBase.
+		
+		Keyword Arguments:
+			size {int} -- batching size (default: {None})
+		"""
+		super().__init__()
 		if type(None) != type(size):
 			assert size >= 1
 			self.__size = int(size)
@@ -47,7 +52,7 @@ class BatcherBase(object):
 	def natype(self):
 		return self.__natype
 	@property
-	def batches(self):
+	def collection(self):
 		return self._batches
 	@property
 	def tmp(self):
@@ -56,18 +61,39 @@ class BatcherBase(object):
 		return self._tmp
 
 	def new_batch(self):
-		if self.batches[-1].is_full():
-			self.batches[-1].write()
+		"""Add a new empty batch to the current collection."""
+		if self.collection[-1].is_full():
+			self.collection[-1].write()
 			self._batches.append(Batch(self))
 
 	def add_record(self, record):
+		"""Add a record to the currentcollection.
+		
+		The record is added to the last empty batch in the collection. If no
+		empty batches are left, a new empty batch is added.
+		
+		Arguments:
+			record
+		"""
 		self.new_batch() # Add new batch if needed
-		self.batches[-1].add(record)
+		self.collection[-1].add(record)
 
 class BatcherThreading(BatcherBase):
 	"""docstring for BatcherThreading"""
 
 	class FEED_MODES(Enum):
+		"""Feeding modes.
+		
+		Used with feed_collection() method.
+		
+		Extends:
+			Enum
+		
+		Variables:
+			REPLACE {number} -- replace current collection.
+			FLOW {number} -- flow records into current collection.
+			APPEND {number} -- append to current collection.
+		"""
 		REPLACE = 1
 		FLOW = 2
 		APPEND = 3
@@ -75,7 +101,14 @@ class BatcherThreading(BatcherBase):
 	__threads = 1
 
 	def __init__(self, threads = 1, size = None):
-		super(BatcherThreading, self).__init__(size)
+		"""Initialize BatcherThreading.
+		
+		Keyword Arguments:
+			threads {number} -- number of threads for parallelization
+			                    (default: {1})
+			size {int} -- batching size (default: {None})
+		"""
+		super().__init__(size)
 		self.threads = threads
 
 	@property
@@ -85,18 +118,29 @@ class BatcherThreading(BatcherBase):
 	def threads(self, t):
 		self.__threads = check_threads(t)
 
-	def feed_batches(self, batches, mode = FEED_MODES.FLOW):
-		assert all([b.type == self.type for b in batches])
+	def feed_collection(self, new_collection, mode = FEED_MODES.FLOW):
+		"""Feed new batch collection to the current one.
+		
+		Different modes of feeding are available, see documentation of
+		BatcherThreading.FEED_MODES for more details.
+		
+		Arguments:
+			new_collection {list} -- list of Batches
+		
+		Keyword Arguments:
+			mode {BatcherThreading.FEED_MODES} -- (default: {FEED_MODES.FLOW})
+		"""
+		assert all([b.type == self.type for b in new_collection])
 		if mode == self.FEED_MODES.REPLACE:
-			self._batches = batches
+			self._batches = new_collection
 		elif mode == self.FEED_MODES.FLOW:
-			for bi in tqdm(range(len(batches))):
-				batch = batches.pop()
+			for bi in tqdm(range(len(new_collection))):
+				batch = new_collection.pop()
 				for record in batch.record_gen():
 					self.add_record(record)
 				batch.reset()
 		elif mode == self.FEED_MODES.APPEND:
-			self.batches.extend(batches)
+			self._batches.extend(new_collection)
 
 class FastaBatcher(BatcherThreading):
 	"""docstring for FastaBatcher"""
@@ -111,7 +155,7 @@ class FastaBatcher(BatcherThreading):
 			                 (overridden by parent.threads)
 			size {int} -- batch size (overridden by parent.size)
 		"""
-		super(FastaBatcher, self).__init__(threads, size)
+		super().__init__(threads, size)
 
 	def do(self, fasta, k):
 		"""Start batching the fasta file.
@@ -129,7 +173,7 @@ class FastaBatcher(BatcherThreading):
 		with open(fasta, "r+") as FH:
 			for record in SimpleFastaParser(FH):
 				batcher.do(record, k)
-				self.feed_batches(batcher.batches, self.FEED_MODES.APPEND)
+				self.feed_collection(batcher.collection, self.FEED_MODES.APPEND)
 
 class RecordBatcher(BatcherThreading):
 	"""docstring for RecordBatcher"""
@@ -153,9 +197,9 @@ class RecordBatcher(BatcherThreading):
 			self.threads = parent.threads
 			threads = parent.threads
 			self.__natype = parent.natype
-			self._batches = parent.batches
+			self._batches = parent.collection
 			self._tmp = parent.tmp
-		super(RecordBatcher, self).__init__(threads, size)
+		super().__init__(threads, size)
 
 	def do(self, record, k):
 		"""Start batching a fasta record.
@@ -174,17 +218,32 @@ class RecordBatcher(BatcherThreading):
 					self.add_record(kmer)
 		else:
 			batches = Parallel(n_jobs = self.threads, verbose = 11
-				)(delayed(build_batch_for_parallel
+				)(delayed(RecordBatcher.build_batch
 					)(seq, record_name, k, self, i)
 					for (seq, i) in Sequence.batcher(record[1], k, self.size))
-			self.feed_batches(batches, self.FEED_MODES.REPLACE)
+			self.feed_collection(batches, self.FEED_MODES.REPLACE)
 
-def build_batch_for_parallel(seq, name, k, batcher, i = 0):
-	batch = Batch(batcher)
-	recordGen = Sequence.kmerator(seq, k, batcher.natype, name, i)
-	batch.add_all((k for k in recordGen if k.is_ab_checked()))
-	batch.write(doSort = True)
-	return batch
+	@staticmethod
+	def build_batch(seq, name, k, batcher, i = 0):
+		"""Builds a Batch.
+		
+		Arguments:
+			seq {string} -- sequence
+			name {string} -- header
+			k {int} -- k for k-mering
+			batcher {BatcherBase} -- parent
+		
+		Keyword Arguments:
+			i {number} -- position offset (default: {0})
+		
+		Returns:
+			Batch
+		"""
+		batch = Batch(batcher)
+		recordGen = Sequence.kmerator(seq, k, batcher.natype, name, i)
+		batch.add_all((k for k in recordGen if k.is_ab_checked()))
+		batch.write(doSort = True)
+		return batch
 
 class Batch(object):
 	"""docstring for Batch"""
@@ -193,7 +252,14 @@ class Batch(object):
 	__i = 0
 
 	def __init__(self, batcher):
-		super(Batch, self).__init__()
+		"""Initialize a Batch.
+		
+		Uses the parent Batcher to set default values.
+		
+		Arguments:
+			batcher {BatcherBase} -- parent batcher.
+		"""
+		super().__init__()
 		assert batcher.size >= 1
 		self.__size = int(batcher.size)
 		self.__remaining = self.__size
@@ -225,6 +291,7 @@ class Batch(object):
 		return self.__tmp
 	@property
 	def info(self):
+		"""Prints Batch information in a readable format."""
 		info = "%s\ntype: %s\nsize: %d" % (self.tmp, self.type, self.size)
 		info += "\ni: %d\nremaining: %d" %(self.current_size, self.remaining)
 		info += "\nwritten: %r\n" % self.is_written
@@ -232,9 +299,22 @@ class Batch(object):
 
 	@property
 	def sorted(self, keyAttr = "seq"):
+		"""Generator of sorted records.
+		
+		Keyword Arguments:
+			keyAttr {str} -- attribute key for sorting (default: {"seq"})
+		
+		Returns:
+			generator
+		"""
 		return sorted(self.record_gen(), key = lambda x: getattr(x, keyAttr))
 
 	def record_gen(self):
+		"""Generator of records.
+		
+		Yields:
+			record
+		"""
 		if self.is_written:
 			with open(self.tmp, "r+") as TH:
 				for record in SimpleFastaParser(TH):
@@ -262,6 +342,11 @@ class Batch(object):
 		self.__remaining -= 1
 
 	def add_all(self, recordGen):
+		"""Adds all records from a generator to the current Batch.
+		
+		Arguments:
+			recordGen {generator} -- record generator
+		"""
 		for record in recordGen:
 			self.add(record)
 
@@ -282,12 +367,23 @@ class Batch(object):
 				if not type(None) == type(r))
 
 	def write(self, f = "as_fasta", doSort = False):
+		"""Writes the batch to file.
+		
+		Keyword Arguments:
+			f {str} -- name of method in records class for string-like
+			           representation (default: {"as_fasta"})
+			doSort {bool} -- whether to sort when writing (default: {False})
+		"""
 		with open(self.tmp, "w+") as TH:
 			TH.write("".join(self.to_write(f, doSort)))
 		self.__records = None
 		self.__written = True
 
 	def reset(self):
+		"""Reset the batch.
+		
+		Empties current records collection and any written file.
+		"""
 		os.remove(self.tmp)
 		self.__written = False
 		self.__i = 0
@@ -295,4 +391,6 @@ class Batch(object):
 		self.__records = [None] * self.__size
 
 	def is_full(self):
+		"""Whether the Batch collection is full.
+		"""
 		return 0 == self.remaining
