@@ -166,3 +166,22 @@ class KMer(Sequence):
 			if not c in self.ab[0]:
 				return False
 		return True
+
+class SequenceCount(Sequence):
+	"""docstring for SequenceCount"""
+
+	__headers = []
+
+	def __init__(self, seq, headers, t = om.NATYPES.DNA):
+		super().__init__(seq, t)
+		self.__headers = headers
+
+	@property
+	def headers(self):
+		return self.__headers.copy()
+	@property
+	def seq(self):
+		return self.text
+
+	def as_text(self):
+		return "%s\t%s\n" % (self.seq, " ".join(self.headers))

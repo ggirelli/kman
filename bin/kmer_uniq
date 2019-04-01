@@ -11,11 +11,11 @@ fasta = os.path.join("/mnt/data/COOLFISH/short.test.fa")
 batcher = km.batch.FastaBatcher(size = 1e6, threads = 20)
 batcher.do(fasta, 30)
 
-joiner = km.join.KJoiner()
+joiner = km.join.KJoinerThreading()
+joiner.threads = 10
+joiner.batch_size = 2
 # #joiner.join(batcher.collection, "/mnt/data/COOLFISH/short.test.out.fa")
 # #joiner.mode = joiner.MODES.SEQ_COUNT
 # #joiner.join(batcher.collection, "/mnt/data/COOLFISH/short.test.out.txt")
 joiner.mode = joiner.MODES.VEC_COUNT
 joiner.join(batcher.collection, "/mnt/data/COOLFISH/short.test.out")
-
-

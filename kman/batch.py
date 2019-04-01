@@ -26,7 +26,7 @@ class BatcherBase(object):
 	_tmp = None
 	_batches = None
 	__size = DEFAULT_BATCH_SIZE
-	__type = DEFAULT_BATCH_TYPE
+	_type = DEFAULT_BATCH_TYPE
 	__natype = DEFAULT_NATYPE
 
 	def __init__(self, size = None):
@@ -47,7 +47,7 @@ class BatcherBase(object):
 		return self.__size
 	@property
 	def type(self):
-		return self.__type
+		return self._type
 	@property
 	def natype(self):
 		return self.__natype
@@ -169,18 +169,18 @@ class FastaBatcher(BatcherThreading):
 		assert os.path.isfile(fasta)
 		assert k > 1
 
-		batcher = RecordBatcher(parent = self)
+		batcher = FastaRecordBatcher(parent = self)
 		with open(fasta, "r+") as FH:
 			for record in SimpleFastaParser(FH):
 				batcher.do(record, k)
 				self.feed_collection(batcher.collection, self.FEED_MODES.APPEND)
 
-class RecordBatcher(BatcherThreading):
-	"""docstring for RecordBatcher"""
+class FastaRecordBatcher(BatcherThreading):
+	"""docstring for FastaRecordBatcher"""
 
 
 	def __init__(self, threads = 1, size = None, parent = None):
-		"""Initialize RecordBatcher instance.
+		"""Initialize FastaRecordBatcher instance.
 		
 		A parent batcher class can be specified, whose attributes are inherited.
 		
@@ -218,7 +218,7 @@ class RecordBatcher(BatcherThreading):
 					self.add_record(kmer)
 		else:
 			batches = Parallel(n_jobs = self.threads, verbose = 11
-				)(delayed(RecordBatcher.build_batch
+				)(delayed(FastaRecordBatcher.build_batch
 					)(seq, record_name, k, self, i)
 					for (seq, i) in Sequence.batcher(record[1], k, self.size))
 			self.feed_collection(batches, self.FEED_MODES.REPLACE)
@@ -250,8 +250,11 @@ class Batch(object):
 	
 	__written = False
 	__i = 0
+	__tmp_dir = None
+	__tmp = None
+	suffix = ".fa"
 
-	def __init__(self, batcher):
+	def __init__(self, batcher, size = 1):
 		"""Initialize a Batch.
 		
 		Uses the parent Batcher to set default values.
@@ -261,15 +264,11 @@ class Batch(object):
 		"""
 		super().__init__()
 		assert batcher.size >= 1
-		self.__size = int(batcher.size)
+		self.__size = max(int(batcher.size), size)
 		self.__remaining = self.__size
 		self.__records = [None] * self.__size
 		self.__type = batcher.type
-		with tempfile.NamedTemporaryFile(mode = "w+",
-			dir = batcher.tmp.name,
-			prefix = str(hash(time.time())),
-			suffix = ".fa") as TH:
-			self.__tmp = TH.name
+		self.__tmp_dir = batcher.tmp.name
 
 	@property
 	def is_written(self):
@@ -288,6 +287,12 @@ class Batch(object):
 		return self.__type
 	@property
 	def tmp(self):
+		if type(None) == type(self.__tmp):
+			with tempfile.NamedTemporaryFile(mode = "w+",
+				dir = self.__tmp_dir,
+				prefix = str(hash(time.time())),
+				suffix = self.suffix) as TH:
+				self.__tmp = TH.name
 		return self.__tmp
 	@property
 	def info(self):

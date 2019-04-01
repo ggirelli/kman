@@ -10,12 +10,61 @@ from ggc.args import check_threads
 import gzip
 from heapq import merge
 import io
-from kman.batch import Batch
+from joblib import Parallel, delayed
+from kman.batch import Batch, BatcherThreading
+from kman.seq import SequenceCount
 import numpy as np
 import os
 import re
+import tempfile
 import time
 from tqdm import tqdm
+
+
+class Crawler(object):
+	"""docstring for Crawler"""
+
+	doSort = False
+	verbose = True
+
+	def __init__(self):
+		super().__init__()
+
+	def count_records(self, batches):
+		return sum([b.current_size for b in batches])
+
+	def do_records(self, batches):
+		assert all([type(b) == Batch for b in batches]), batches
+
+		if self.doSort:
+			generators = [((r.header, r.seq) for r in b.sorted)
+				for b in batches]
+		else:
+			generators = [((r.header, r.seq) for r in b.record_gen())
+				for b in batches]
+
+		crawler = merge(*generators, key = lambda x: x[1])
+
+		return crawler
+
+	def do_batch(self, batches):
+		crawler = self.do_records(batches)
+		
+		first_record = next(crawler)
+		current_seq = first_record[1]
+		current_headers = [first_record[0]]
+
+		if self.verbose:
+			crawler = tqdm(crawler, initial = 1,
+				total = self.count_records(batches))
+
+		for record in crawler:
+			if current_seq == record[1]:
+				current_headers.append(record[0])
+			else:
+				yield (current_headers, current_seq)
+				current_seq = record[1]
+				current_headers = [record[0]]
 
 class KJoiner(object):
 	"""docstring for KJoiner"""
@@ -71,54 +120,7 @@ class KJoiner(object):
 		elif self.mode == self.MODES.VEC_COUNT:
 			self.__join_function = self.__join_vector_count
 
-	def join(self, batches, outpath, doSort = False):
-		"""Join batches.
-		
-		Perform k-joining of batches.
-		
-		Arguments:
-			batches {list} -- list of Batch instances
-			outpath {str} -- path to output file
-		
-		Keyword Arguments:
-			doSort {bool} -- whether batches need to be sorted
-			                 (default: {False})
-		"""
-		assert all([type(b) == Batch for b in batches])
-		if doSort:
-			generators = [((r.header, r.seq) for r in b.sorted)
-				for b in batches]
-		else:
-			generators = [((r.header, r.seq) for r in b.record_gen())
-				for b in batches]
-
-		nrecords = sum([b.current_size for b in batches])
-		crawler = merge(*generators, key = lambda x: x[1])
-
-		kwargs = {}
-		OH = outpath
-		if self.mode != self.MODES.VEC_COUNT:
-			OH = open(outpath, "w+")
-		else:
-			kwargs["vector"] = AbundanceVector()
-
-		first_record = next(crawler)
-		current_seq = first_record[1]
-		current_headers = [first_record[0]]
-		for record in tqdm(crawler, total = nrecords):
-			if current_seq == record[1]:
-				current_headers.append(record[0])
-			else:
-				self.join_function(OH, current_headers, current_seq, **kwargs)
-				current_seq = record[1]
-				current_headers = [record[0]]
-
-		if self.mode != self.MODES.VEC_COUNT:
-			OH.close()
-		else:
-			kwargs['vector'].write_to(OH)
-
-	def __join_unique(self, OH, headers, seq, **kwargs):
+	def __join_unique(self, headers, seq, OH, **kwargs):
 		"""Perform unique joining.
 		
 		Retains only unique records.
@@ -133,7 +135,7 @@ class KJoiner(object):
 			OH.write(">%s\n%s\n" % batch)
 			return(batch)
 
-	def __join_sequence_count(self, OH, headers, seq, **kwargs):
+	def __join_sequence_count(self, headers, seq, OH, **kwargs):
 		"""Perform sequence counting through joining.
 		
 		Counts sequence occurrences.
@@ -147,7 +149,7 @@ class KJoiner(object):
 		OH.write("%s\t%d\n" % batch)
 		return(batch)
 
-	def __join_vector_count(self, OH, headers, seq, vector, **kwargs):
+	def __join_vector_count(self, headers, seq, OH, vector, **kwargs):
 		"""Generate abundance vectors through joining.
 		
 		Arguments:
@@ -164,38 +166,127 @@ class KJoiner(object):
 			name, start, end = m.group("name", "start", "end")
 			vector.add_count(name, "+", int(start), hcount)
 
-class KJoinerThreading(object):
+	def join(self, batches, outpath, doSort = False):
+		"""Join batches.
+		
+		Perform k-joining of batches.
+		
+		Arguments:
+			batches {list} -- list of Batch instances
+			outpath {str} -- path to output file
+		
+		Keyword Arguments:
+			doSort {bool} -- whether batches need to be sorted
+							 (default: {False})
+		"""
+
+		kwargs = {'OH' : outpath}
+		if self.mode != self.MODES.VEC_COUNT:
+			kwargs['OH'] = open(outpath, "w+")
+		else:
+			kwargs["vector"] = AbundanceVector()
+
+		crawler = Crawler()
+		for batch in crawler.do_batch(batches):
+			self.join_function(*batch, **kwargs)
+
+		if self.mode != self.MODES.VEC_COUNT:
+			kwargs['OH'].close()
+		else:
+			kwargs['vector'].write_to(kwargs['OH'])
+
+class SeqCountBatcher(BatcherThreading):
+	"""docstring for SeqCountBatcher"""
+
+	_type = SequenceCount
+	__doSort = False
+
+	def __init__(self, n_batches = 10, threads = 1, parent = None):
+		if type(None) != type(parent):
+			assert KJoinerThreading == type(parent)
+			self._threads = parent.threads
+			threads = parent.threads
+			self._tmp = parent.tmp
+		super().__init__(threads)
+		self.n_batches = n_batches
+
+	@property
+	def doSort(self):
+		return self.__doSort
+	@doSort.setter
+	def doSort(self, doSort):
+		assert type(True) == type(doSort)
+		self.__doSort = doSort
+
+	def do(self, recordBatch):
+		batchList = [recordBatch[i:min(len(recordBatch), i+self.n_batches)]
+			for i in range(0, len(recordBatch), self.n_batches)]
+		print([len(b) for b in batchList])
+
+		batches = Parallel(n_jobs = self.threads, verbose = 11
+			)(delayed(SeqCountBatcher.build_batch
+				)(batchedRecords, self) for batchedRecords in batchList)
+
+		self.feed_collection(batches, self.FEED_MODES.REPLACE)
+
+	@staticmethod
+	def build_batch(recordBatchList, batcher):
+		crawling = Crawler()
+		crawling.doSort = batcher.doSort
+		crawling.verbose = False
+
+		batch = Batch(batcher, crawling.count_records(recordBatchList))
+		batch.add_all((SequenceCount(seq, headers)
+			for (headers, seq) in crawling.do_batch(recordBatchList)))
+		batch.suffix = ".txt"
+		batch.write(f = "as_text", doSort = batcher.doSort)
+
+		return batch
+
+	def join(self):
+		pass
+
+class KJoinerThreading(KJoiner):
 	"""docstring for KJoinerThreading"""
 
+	_tmp = None
 	_threads = 1
+	__batch_size = 10
 
 	def __init__(self, mode = None):
 		super().__init__(mode)
 
 	@property
 	def threads(self):
-		return self.__threads
+		return self._threads
 	@threads.setter
 	def threads(self, t):
-		self.__threads = check_threads(t)
+		self._threads = check_threads(t)
+	@property
+	def batch_size(self):
+		return self.__batch_size
+	@batch_size.setter
+	def batch_size(self, batch_size):
+		assert type(0) == type(batch_size)
+		assert batch_size >= 2
+		self.__batch_size = batch_size
+	@property
+	def tmp(self):
+		if type(None) == type(self._tmp):
+			self._tmp = tempfile.TemporaryDirectory(prefix = "kmanJoin")
+		return self._tmp
 
-	def __intermediate_counts(self, batches):
-		# Join subset of batches into intermediate table with format:
-		# sequence | space-separated-headers
-		pass
-
-	def __join_intermediates(self):
-		# Join intermediates
-		pass
+	def __parallel_join(self, recordBatches, outpath, doSort = False):
+		batcher = SeqCountBatcher(self.batch_size, parent = self)
+		batcher.doSort = doSort
+		batcher.do(recordBatches)
+		time.sleep(1000)
 
 	def join(self, batches, outpath, doSort = False):
 		if 1 == self.threads:
 			super().join(batches, outpath, doSort)
 		else:
-			#self.__intermediate_counts(batches)
-			#self.__join_intermediates()
-			#self.join_function()
-			pass
+			self.__parallel_join(batches, outpath, doSort)
 
 class AbundanceVector(object):
 	"""docstring for AbundanceVector"""
@@ -221,7 +312,7 @@ class AbundanceVector(object):
 		
 		Keyword Arguments:
 			replace {bool} -- whether to allow for replacement of non-zero
-			                  counts (default: {False})
+							  counts (default: {False})
 		"""
 		self.add_ref(ref, strand, pos + 1)
 		if not replace:
