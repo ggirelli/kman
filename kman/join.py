@@ -164,6 +164,21 @@ class KJoiner(object):
 			name, start, end = m.group("name", "start", "end")
 			vector.add_count(name, "+", int(start), hcount)
 
+class KJoinerThreading(object):
+	"""docstring for KJoinerThreading"""
+
+	_threads = 0
+
+	def __init__(self, mode = None):
+		super().__init__(mode)
+
+	@property
+	def threads(self):
+		return self.__threads
+	@threads.setter
+	def threads(self, t):
+		self.__threads = check_threads(t)
+
 class AbundanceVector(object):
 	"""docstring for AbundanceVector"""
 
