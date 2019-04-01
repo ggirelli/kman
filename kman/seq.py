@@ -148,11 +148,15 @@ class KMer(Sequence):
 		chrom, coords = record[0].split(":")
 		start, end = [int(n) for n in coords.split("-")]
 		return KMer(chrom, start, end, record[1], t)
+	
+	@staticmethod
+	def from_file(*args, **kwargs):
+		return KMer.from_fasta(*args, **kwargs)
 
 	def as_fasta(self):
 		"""Fasta-like representation."""
 		return ">%s\n%s\n" % (self.header, self.seq)
-	
+
 	def is_ab_checked(self):
 		"""Check if AB is fully respected.
 		
@@ -177,11 +181,31 @@ class SequenceCount(Sequence):
 		self.__headers = headers
 
 	@property
-	def headers(self):
+	def header(self):
 		return self.__headers.copy()
 	@property
 	def seq(self):
 		return self.text
 
+	@staticmethod
+	def from_text(line, t = om.NATYPES.DNA):
+		"""Reads a KMer from a Fasta record.
+		
+		Arguments:
+			record {tuple} -- (header, seq)
+		
+		Keyword Arguments:
+			t {om.NATYPES} -- nucleic acid type (default: {om.NATYPES.DNA})
+		
+		Returns:
+			KMer
+		"""
+		seq, headers = line.strip().split("\t")
+		return SequenceCount(seq, headers.split(" "), t)
+
+	@staticmethod
+	def from_file(*args, **kwargs):
+		return SequenceCount.from_text(*args, **kwargs)
+
 	def as_text(self):
-		return "%s\t%s\n" % (self.seq, " ".join(self.headers))
+		return "%s\t%s\n" % (self.seq, " ".join(self.header))

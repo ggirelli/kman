@@ -252,6 +252,7 @@ class Batch(object):
 	__i = 0
 	__tmp_dir = None
 	__tmp = None
+	isFasta = True
 	suffix = ".fa"
 
 	def __init__(self, batcher, size = 1):
@@ -322,8 +323,12 @@ class Batch(object):
 		"""
 		if self.is_written:
 			with open(self.tmp, "r+") as TH:
-				for record in SimpleFastaParser(TH):
-					yield KMer.from_fasta(record)
+				if self.isFasta:
+					for record in SimpleFastaParser(TH):
+						yield self.__type.from_file(record)
+				else:
+					for line in TH:
+						yield self.__type.from_file(line)
 		else:
 			for record in self.__records:
 				if not type(None) == type(record):

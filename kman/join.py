@@ -221,7 +221,6 @@ class SeqCountBatcher(BatcherThreading):
 	def do(self, recordBatch):
 		batchList = [recordBatch[i:min(len(recordBatch), i+self.n_batches)]
 			for i in range(0, len(recordBatch), self.n_batches)]
-		print([len(b) for b in batchList])
 
 		batches = Parallel(n_jobs = self.threads, verbose = 11
 			)(delayed(SeqCountBatcher.build_batch
@@ -236,6 +235,7 @@ class SeqCountBatcher(BatcherThreading):
 		crawling.verbose = False
 
 		batch = Batch(batcher, crawling.count_records(recordBatchList))
+		batch.isFasta = False
 		batch.add_all((SequenceCount(seq, headers)
 			for (headers, seq) in crawling.do_batch(recordBatchList)))
 		batch.suffix = ".txt"
@@ -244,7 +244,12 @@ class SeqCountBatcher(BatcherThreading):
 		return batch
 
 	def join(self):
-		pass
+		crawler = Crawler()
+
+		for batch in crawler.do_batch(self.collection):
+			print((batch, len(batch)))
+			if 1 < len(batch):
+				import sys; sys.exit()
 
 class KJoinerThreading(KJoiner):
 	"""docstring for KJoinerThreading"""
@@ -280,6 +285,7 @@ class KJoinerThreading(KJoiner):
 		batcher = SeqCountBatcher(self.batch_size, parent = self)
 		batcher.doSort = doSort
 		batcher.do(recordBatches)
+		batcher.join()
 		time.sleep(1000)
 
 	def join(self, batches, outpath, doSort = False):
