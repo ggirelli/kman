@@ -7,9 +7,11 @@
 
 from enum import Enum
 from heapq import merge
+import gzip
 import io
 from kman.batch import Batch
 import numpy as np
+import os
 import re
 import time
 from tqdm import tqdm
@@ -65,9 +67,12 @@ class KJoiner(object):
 		nrecords = sum([b.current_size for b in batches])
 		crawler = merge(*generators, key = lambda x: x[1])
 
+		kwargs = {}
 		OH = outpath
 		if self.mode != self.MODES.VEC_COUNT:
 			OH = open(outpath, "w+")
+		else:
+			kwargs["storage"] = RecordStorage()
 
 		first_record = next(crawler)
 		current_seq = first_record[1]
@@ -76,12 +81,14 @@ class KJoiner(object):
 			if current_seq == record[1]:
 				current_headers.append(record[0])
 			else:
-				self.join_function(OH, current_headers, current_seq)
+				self.join_function(OH, current_headers, current_seq, **kwargs)
 				current_seq = record[1]
 				current_headers = [record[0]]
 
 		if self.mode != self.MODES.VEC_COUNT:
 			OH.close()
+		else:
+			kwargs['storage'].write_to(OH)
 
 	def __join_unique(self, OH, headers, seq, **kwargs):
 		if len(headers) == 1:
@@ -94,44 +101,52 @@ class KJoiner(object):
 		OH.write("%s\t%d\n" % batch)
 		return(batch)
 
-	def __join_vector_count(self, OH, headers, seq, **kwargs):
+	def __join_vector_count(self, OH, headers, seq, storage, **kwargs):
 		regexp = re.compile(
-			r'(?P<name>[a-zA-Z0-9\\.]+):(?P<start>[0-9]+)-(?P<end>[0-9]+)')
+			r'^(?P<name>[a-zA-Z0-9\\.]+):(?P<start>[0-9]+)-(?P<end>[0-9]+)$')
+		hcount = len(headers)
 		for header in headers:
 			m = regexp.search(header)
-			record_name, start, end = m.group("name", "start", "end")
-			import sys; sys.exit()
-		pass
+			name, start, end = m.group("name", "start", "end")
+			storage.add_count(name, "+", int(start), hcount)
 
-class RecordStorage(io.FileIO):
+class RecordStorage(object):
 	"""docstring for RecordStorage"""
 
-	__n_lines = 0
-	__line_locations = {}
+	__data = {}
 
-	def __init__(self, name, delim = "\t", mode = "a+b", **kwargs):
-		super(RecordStorage, self).__init__(name, mode, **kwargs)
-		self.__delim = delim
+	def __init__(self):
+		super(RecordStorage, self).__init__()
 
-		self.seek(0, 2)
-		file_end_location = self.tell()
-		self.seek(0)
-		if 0 != file_end_location:
-			while self.tell() != file_end_location:
-				current_location = self.tell()
-				line = next(self).decode("utf-8")
-				current_key = int(line.strip().split(self.__delim)[0])
-				self.__line_locations[current_key] = current_location
-			self.seek(0)
+	@property
+	def data(self):
+		return self.__data
 
-	def add_count(self, pos, count):
-		assert_msg = "a count for position %d has already been stored." % pos
-		assert not pos in self.__line_locations.keys(), assert_msg
-		self.seek(0, 2)
-		self.__line_locations[pos] = self.tell()
-		self.write(bytes("%d%s%d\n" % (pos, self.__delim, count), "utf-8"))
+	def add_count(self, ref, strand, pos, count, replace = False):
+		self.add_ref(ref, strand, pos + 1)
+		if not replace:
+			assert_msg = "cannot update a non-zero count without replace."
+			assert_msg += " (%s, %s, %d, %d)" % (ref, strand, pos, count)
+			assert self.__data[ref][strand][pos] == 0, assert_msg
+		self.__data[ref][strand][pos] = count
 
-	def get_count(self, pos):
-		self.seek(self.__line_locations[pos])
-		line = next(self).decode("utf-8")
-		return line.strip().split(self.__delim)[1]
+	def add_ref(self, ref, strand, size):
+		if not ref in self.__data.keys():
+			self.__data[ref] = {}
+		if not strand in self.__data[ref].keys():
+			self.__data[ref][strand] = np.zeros(size)
+		elif size > self.__data[ref][strand].shape[0]:
+			self.__data[ref][strand].resize(size)
+
+	def write_to(self, dirpath):
+		dirpath = os.path.splitext(dirpath)[0]
+		assert not os.path.isfile(dirpath)
+		print('Writing output in "%s"' % dirpath)
+		os.makedirs(dirpath, exist_ok = True)
+		for ref in self.__data.keys():
+			for strand in self.__data[ref].keys():
+				fname = "%s___%s.gz" % (ref, strand)
+				OH = gzip.open(os.path.join(dirpath, fname), "wb")
+				for count in tqdm(self.__data[ref][strand], desc = fname):
+					OH.write(b"%d\n" % count)
+				OH.close()
