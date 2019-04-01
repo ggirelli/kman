@@ -30,7 +30,7 @@ class BatcherBase(object):
 	__natype = DEFAULT_NATYPE
 
 	def __init__(self, size = None):
-		super(Batcher, self).__init__()
+		super(BatcherBase, self).__init__()
 		if type(None) != type(size):
 			assert size >= 1
 			self.__size = int(size)
