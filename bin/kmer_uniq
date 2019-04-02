@@ -18,7 +18,7 @@ Extract all k-mer (i.e., k-characters substrings) that appear in the input
 sequence only once.''', formatter_class = argparse.RawDescriptionHelpFormatter)
 
 parser.add_argument('input', type = str, help = '''
-	Path to input fasta file.''')
+	Path to input fasta file. Can be gzipped (ending in ".gz")''')
 parser.add_argument('output', type = str, help = '''
 	Path to output fasta file.''')
 parser.add_argument('-k', type = int, required = True,

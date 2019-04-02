@@ -8,6 +8,7 @@
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 from enum import Enum
 from ggc.args import check_threads
+import gzip
 from kman.seq import KMer, Sequence
 from joblib import Parallel, delayed
 import oligo_melting as om
@@ -215,12 +216,16 @@ class FastaBatcher(BatcherThreading):
 		assert k > 1
 
 		batcher = FastaRecordBatcher(parent = self)
-		with open(fasta, "r+") as FH:
-			for record in SimpleFastaParser(FH):
-				batcher.do(record, k)
-				if 1 != self.threads:
-					self.feed_collection(batcher.collection,
-						self.FEED_MODE.APPEND)
+		if fasta.endswith(".gz"):
+			FH = gzip.open(fasta, "rt") 
+		else:
+			FH = open(fasta, "r+")
+		for record in SimpleFastaParser(FH):
+			batcher.do(record, k)
+			if 1 != self.threads:
+				self.feed_collection(batcher.collection,
+					self.FEED_MODE.APPEND)
+		FH.close()
 
 class FastaRecordBatcher(BatcherThreading):
 	"""FASTA record batchin system.
