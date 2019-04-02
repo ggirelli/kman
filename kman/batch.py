@@ -173,7 +173,9 @@ class FastaBatcher(BatcherThreading):
 		with open(fasta, "r+") as FH:
 			for record in SimpleFastaParser(FH):
 				batcher.do(record, k)
-				self.feed_collection(batcher.collection, self.FEED_MODE.APPEND)
+				if 1 != self.threads:
+					self.feed_collection(batcher.collection,
+						self.FEED_MODE.APPEND)
 
 class FastaRecordBatcher(BatcherThreading):
 	"""docstring for FastaRecordBatcher"""
