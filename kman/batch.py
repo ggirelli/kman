@@ -404,6 +404,5 @@ class Batch(object):
 		self.__records = [None] * self.__size
 
 	def is_full(self):
-		"""Whether the Batch collection is full.
-		"""
+		"""Whether the Batch collection is full."""
 		return 0 == self.remaining

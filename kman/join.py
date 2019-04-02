@@ -69,6 +69,16 @@ class Crawler(object):
 		return crawler
 
 	def do_batch(self, batches):
+		"""Group records from batches based on sequence.
+		
+		Crawls into groups of records from input batches.
+		
+		Arguments:
+			batches {list} -- list of Batches
+
+		Yields:
+			tuple -- (headers, sequence)
+		"""
 		crawler = self.do_records(batches)
 		
 		first_record = next(crawler)
@@ -139,6 +149,7 @@ class KJoiner(object):
 		return self.__join_function
 
 	def __set_join_function(self):
+		"""Select the appropriate join function, based on the current mode."""
 		if self.mode == self.MODE.UNIQUE:
 			self.__join_function = self.join_unique
 		elif self.mode == self.MODE.SEQ_COUNT:
@@ -221,6 +232,18 @@ class KJoiner(object):
 					vector.add_count(name, "+", int(start), hcount)
 
 	def _pre_join(self, outpath):
+		"""Prepares for joining.
+		
+		Perform appropriate actiond (mode-based):
+		- open buffer to output file
+		- create AbundanceVector instance
+		
+		Arguments:
+			outpath {str} -- path to output
+		
+		Returns:
+			dict -- keyword arguments for join function
+		"""
 		kwargs = {'OH' : outpath}
 		if not self.mode.name.startswith("VEC_"):
 			kwargs['OH'] = open(outpath, "w+")
@@ -229,6 +252,15 @@ class KJoiner(object):
 		return kwargs
 
 	def _post_join(self, **kwargs):
+		"""Wraps up after joining.
+		
+		Perform appropriate actiond (mode-based):
+		- close buffer to output file
+		- write AbundanceVector to file
+		
+		Arguments:
+			**kwargs {dict} -- join function keyword arguments
+		"""
 		if not self.mode.name.startswith("VEC_"):
 			kwargs['OH'].close()
 		else:
@@ -247,7 +279,6 @@ class KJoiner(object):
 			doSort {bool} -- whether batches need to be sorted
 							 (default: {False})
 		"""
-
 		kwargs = self._pre_join((outpath))
 
 		crawler = Crawler()
@@ -280,6 +311,14 @@ class SeqCountBatcher(BatcherThreading):
 		self.__doSort = doSort
 
 	def do(self, recordBatch):
+		"""Start batching the records.
+		
+		Batch seq.Sequence sub-class batch.Batch records into seq.SequenceCounts
+		batch.Batch instances.
+		
+		Arguments:
+			recordBatch {list} -- list of Batches
+		"""
 		batchList = [recordBatch[i:min(len(recordBatch), i+self.n_batches)]
 			for i in range(0, len(recordBatch), self.n_batches)]
 
@@ -291,6 +330,15 @@ class SeqCountBatcher(BatcherThreading):
 
 	@staticmethod
 	def build_batch(recordBatchList, batcher):
+		"""Builds a Batch.
+		
+		Arguments:
+			recordBatchList {list} -- list of Batches
+			batcher {BatcherBase} -- parent
+		
+		Returns:
+			Batch
+		"""
 		crawling = Crawler()
 		crawling.doSort = batcher.doSort
 		crawling.verbose = False
@@ -305,6 +353,12 @@ class SeqCountBatcher(BatcherThreading):
 		return batch
 
 	def join(self, fjoin, **kwargs):
+		"""Joins SequenceCount batches.
+		
+		Arguments:
+			fjoin {function} -- join function
+			**kwargs {dict} -- join function keyword arguments
+		"""
 		crawler = Crawler()
 		for headers, seq in crawler.do_batch(self.collection):
 			headers = list(chain(*headers))
@@ -349,6 +403,12 @@ class KJoinerThreading(KJoiner):
 		return self._tmp
 
 	def __parallel_join(self, recordBatches, outpath):
+		"""Joins sequenceCount batches in paralle.
+		
+		Arguments:
+			recordBatches {list} -- list of Batches
+			outpath {str} -- path to output
+		"""
 		kwargs = self._pre_join(outpath)
 
 		batcher = SeqCountBatcher(self.batch_size, parent = self)
@@ -359,6 +419,14 @@ class KJoinerThreading(KJoiner):
 		self._post_join(**kwargs)
 
 	def join(self, batches, outpath):
+		"""Join batches.
+		
+		Perform k-joining of batches.
+		
+		Arguments:
+			batches {list} -- list of Batch instances
+			outpath {str} -- path to output file
+		"""
 		if 1 == self.threads:
 			super().join(batches, outpath, self.doSort)
 		else:
