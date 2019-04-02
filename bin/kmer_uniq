@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 
-# ------------------------------------------------------------------------------
-# 
-# Author: Gabriele Girelli
-# Email: gigi.ga90@gmail.com
-# Project: K-mer MANager package
-# 
-# ------------------------------------------------------------------------------
-
-
+'''
+@author: Gabriele Girelli
+@contact: gigi.ga90@gmail.com
+@description: script to identify uniquely occurring k-mers
+'''
 
 import argparse
 import kman as km

@@ -173,6 +173,10 @@ class FastaBatcher(BatcherThreading):
 	
 	Extends:
 		BatcherThreading
+
+	Variables:
+		_doReverseComplement {bool} -- whether to batch also the reverse
+		                               complement fo the sequences
 	"""
 
 	_doReverseComplement = False
@@ -225,6 +229,10 @@ class FastaRecordBatcher(BatcherThreading):
 	
 	Extends:
 		BatcherThreading
+
+	Variables:
+		_doReverseComplement {bool} -- whether to batch also the reverse
+		                               complement fo the sequences
 	"""
 
 	_doReverseComplement = False

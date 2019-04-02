@@ -11,11 +11,26 @@ import oligo_melting as om
 import re
 
 class SequenceCoords(object):
-	"""docstring for SequenceCoords"""
+	"""Reference genome window coordinates system.
+	
+	Variables:
+		regexp {sre.SRE_PATTERN} -- regular expression to parse input strings
+	"""
 
 	@unique
 	class STRAND(Enum):
-		"""docstring for STRAND"""
+		"""Reference genome strand.
+		
+		To be used only for strandedness. Coordinates always refer to the PLUS
+		strand.
+		
+		Extends:
+			Enum
+		
+		Variables:
+			PLUS {number} -- positive strand
+			MINUS {number} -- negative strand
+		"""
 		PLUS = 0
 		MINUS = 1
 		@property
@@ -50,6 +65,14 @@ class SequenceCoords(object):
 	
 	@staticmethod
 	def rev(strand):
+		"""Provides reverse strand.
+		
+		Arguments:
+			strand {SequenceCoords.STRAND} -- current strand
+		
+		Returns:
+			Sequence.Coords.STRAND -- reverse strand
+		"""
 		if SequenceCoords.STRAND.PLUS == strand:
 			return SequenceCoords.STRAND.MINUS
 		else:
@@ -61,6 +84,14 @@ class SequenceCoords(object):
 
 	@staticmethod
 	def from_str(s):
+		"""Builds a SequenceCoords object from a string.
+		
+		Arguments:
+			s {str} -- input string
+		
+		Returns:
+			SequenceCoords
+		"""
 		ref, start, end, strand = SequenceCoords.regexp.search(s
 			).group("ref", "start", "end", "strand")
 		strand = list(SequenceCoords.STRAND)[[x.label
@@ -68,7 +99,18 @@ class SequenceCoords(object):
 		return SequenceCoords(ref, int(start), int(end), strand)
 
 class Sequence(om.Sequence):
-	"""docstring for Sequence"""
+	"""Nucleic acid sequence.
+	
+	Extends the homonym class from oligo-melting adding k-mer generators and
+	batcher methods.
+	
+	Extends:
+		om.Sequence
+	
+	Variables:
+		doReverseComplement {bool} -- whether to generate the reverse complement
+									  when crawling through the sequence.
+	"""
 
 	doReverseComplement = False
 
@@ -190,7 +232,13 @@ class Sequence(om.Sequence):
 					offset = i, rc = rc)
 
 class KMer(Sequence):
-	"""docstring for KMer"""
+	"""K-mer object.
+	
+	Extends the Sequence class providing coordinate system and alphabet check.
+	
+	Extends:
+		Sequence
+	"""
 
 	def __init__(self, chrom, start, end, seq,
 		t = om.NATYPES.DNA, strand = SequenceCoords.STRAND.PLUS):
@@ -251,7 +299,16 @@ class KMer(Sequence):
 		return True
 
 class SequenceCount(Sequence):
-	"""docstring for SequenceCount"""
+	"""Sequence counting system.
+	
+	Retains a sequence and the headers of all the regions where it is present.
+	
+	Extends:
+		Sequence
+	
+	Variables:
+		__headers {list} -- list of headers.
+	"""
 
 	__headers = []
 

@@ -20,7 +20,6 @@ import tempfile
 import time
 from tqdm import tqdm
 
-
 class Crawler(object):
 	"""Crawling system.
 	
