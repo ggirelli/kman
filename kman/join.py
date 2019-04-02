@@ -13,7 +13,7 @@ import io
 from itertools import chain
 from joblib import Parallel, delayed
 from kman.batch import Batch, BatcherThreading
-from kman.seq import SequenceCount
+from kman.seq import SequenceCoords, SequenceCount
 import numpy as np
 import os
 import tempfile
@@ -219,7 +219,7 @@ class KJoiner(object):
 		hcount = len(headers)
 		for header in headers:
 			coords = SequenceCoords.from_str(header)
-			vector.add_count(coords.ref, coords.strand, int(coords.start),
+			vector.add_count(coords.ref, coords.strand.label, int(coords.start),
 				hcount, len(seq))
 
 	@staticmethod
@@ -240,7 +240,8 @@ class KJoiner(object):
 			if not 1 == len(refList):
 				for h in headers:
 					hcount = refCounts[refList != h.ref].sum()
-					vector.add_count(h.ref, "+", int(h.start), hcount, len(seq))
+					vector.add_count(h.ref, h.strand.label, int(h.start),
+						hcount, len(seq))
 
 	def _pre_join(self, outpath):
 		"""Prepares for joining.

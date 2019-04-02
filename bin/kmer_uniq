@@ -54,6 +54,7 @@ tempfile.tempdir = args.T
 
 batcher = km.batch.FastaBatcher(size = args.b, threads = args.t)
 batcher.do(args.input, args.k)
+batcher.doReverseComplement = args.do_reverse
 
 joiner = km.join.KJoinerThreading()
 joiner.threads = args.t

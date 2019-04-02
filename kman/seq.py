@@ -6,7 +6,7 @@
 '''
 
 from enum import Enum, unique
-from heapq import merge
+from itertools import chain
 import oligo_melting as om
 import re
 
@@ -33,7 +33,7 @@ class SequenceCoords(object):
 		self._ref = ref
 		self._start = start
 		self._end = end
-		self._strand = self.STRAND.PLUS
+		self._strand = strand
 
 	@property
 	def ref(self):
@@ -49,7 +49,7 @@ class SequenceCoords(object):
 		return self._strand
 	
 	@staticmethod
-	def reverse(strand):
+	def rev(strand):
 		if SequenceCoords.STRAND.PLUS == strand:
 			return SequenceCoords.STRAND.MINUS
 		else:
@@ -120,7 +120,8 @@ class Sequence(om.Sequence):
 				batchSize, self.name, rc = self.doReverseComplement)
 
 	@staticmethod
-	def kmerator(seq, k, t, prefix = "ref", offset = 0, rc = False):
+	def kmerator(seq, k, t, prefix = "ref", offset = 0,
+		strand = SequenceCoords.STRAND.PLUS, rc = False):
 		"""Extract k-mers from seq.
 		
 		Arguments:
@@ -133,15 +134,19 @@ class Sequence(om.Sequence):
 			offset {number} -- if this is a batch, current location for
 			                   shifting (default: {0})
 		"""
-		normGen = (KMer(prefix, i+offset, i+offset+k, seq[i:i+k], t)
-			for i in range(len(seq)-k+1))
-		if rc:
-			rcSeq = Sequence.mkrc(seq, t)
-			rcGen = (KMer(prefix, i+offset, i+offset+k, rcSeq[i:i+k], t)
-				for i in range(len(rcSeq)-k+1))
-			return merge(*[normGen, rcGen])
-		else:
-			return normGen
+		def kmerGen(seq, prefix, k, t, offset, strand, rc):
+			if rc:
+				revStrand = SequenceCoords.rev(strand)
+				for i in range(len(seq)-k+1):
+					yield KMer(prefix, i+offset, i+offset+k, seq[i:i+k], t,
+						strand = strand)
+					yield KMer(prefix, i+offset, i+offset+k,
+						Sequence.mkrc(seq[i:i+k], t), t, strand = revStrand)
+			else:
+				for i in range(len(seq)-k+1):
+					yield KMer(prefix, i+offset, i+offset+k, seq[i:i+k], t,
+						strand = strand)
+		return kmerGen(seq, prefix, k, t, offset, strand, rc)
 
 	@staticmethod
 	def batcher(seq, k, batchSize):
@@ -228,6 +233,9 @@ class KMer(Sequence):
 		"""Fasta-like representation."""
 		return ">%s\n%s\n" % (self.header, self.seq)
 
+	def __repr__(self):
+		return "%s\t%s" % (self.header, self.seq)
+
 	def is_ab_checked(self):
 		"""Check if AB is fully respected.
 		
@@ -278,5 +286,8 @@ class SequenceCount(Sequence):
 	def from_file(*args, **kwargs):
 		return SequenceCount.from_text(*args, **kwargs)
 
+	def __repr__(self):
+		return "%s\t%s" % (self.seq, " ".join(self.header))
+
 	def as_text(self):
-		return "%s\t%s\n" % (self.seq, " ".join(self.header))
+		return str(self) + "\n"

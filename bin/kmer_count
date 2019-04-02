@@ -73,6 +73,7 @@ args.m = km.join.KJoiner.MODE[args.m]
 # RUN ==========================================================================
 
 batcher = km.batch.FastaBatcher(size = args.b, threads = args.t)
+batcher.doReverseComplement = args.do_reverse
 batcher.do(args.input, args.k)
 
 joiner = km.join.KJoinerThreading(args.m)

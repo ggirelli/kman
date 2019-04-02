@@ -175,6 +175,8 @@ class FastaBatcher(BatcherThreading):
 		BatcherThreading
 	"""
 
+	_doReverseComplement = False
+
 	def __init__(self, threads = 1, size = None):
 		"""Initialize FastaBatcher instance.
 		
@@ -186,6 +188,15 @@ class FastaBatcher(BatcherThreading):
 			size {int} -- batch size (overridden by parent.size)
 		"""
 		super().__init__(threads, size)
+
+	@property
+	def doReverseComplement(self):
+		return self._doReverseComplement
+	@doReverseComplement.setter
+	def doReverseComplement(self, rc):
+		assert type(True) == type(rc)
+		self._doReverseComplement = rc
+	
 
 	def do(self, fasta, k):
 		"""Start batching the fasta file.
@@ -216,6 +227,8 @@ class FastaRecordBatcher(BatcherThreading):
 		BatcherThreading
 	"""
 
+	_doReverseComplement = False
+
 	def __init__(self, threads = 1, size = None, parent = None):
 		"""Initialize FastaRecordBatcher instance.
 		
@@ -233,10 +246,19 @@ class FastaRecordBatcher(BatcherThreading):
 			size = parent.size
 			self.threads = parent.threads
 			threads = parent.threads
+			self._doReverseComplement = parent.doReverseComplement
 			self.__natype = parent.natype
 			self._batches = parent.collection
 			self._tmp = parent.tmp
 		super().__init__(threads, size)
+
+	@property
+	def doReverseComplement(self):
+		return self._doReverseComplement
+	@doReverseComplement.setter
+	def doReverseComplement(self, rc):
+		assert type(True) == type(rc)
+		self._doReverseComplement = rc
 
 	def do(self, record, k):
 		"""Start batching a fasta record.
@@ -249,9 +271,10 @@ class FastaRecordBatcher(BatcherThreading):
 		"""
 		record_name = record[0].split(" ")[0]
 		print("Batching record '%s'..." % record_name)
-		
+
 		if 1 == self.threads:
-			kmerGen = Sequence.kmerator(record[1], k, self.natype, record_name)
+			kmerGen = Sequence.kmerator(record[1], k, self.natype, record_name,
+				rc = self.doReverseComplement)
 			for kmer in tqdm(kmerGen):
 				if kmer.is_ab_checked():
 					self.add_record(kmer)
@@ -279,7 +302,8 @@ class FastaRecordBatcher(BatcherThreading):
 			Batch
 		"""
 		batch = Batch(batcher)
-		recordGen = Sequence.kmerator(seq, k, batcher.natype, name, i)
+		recordGen = Sequence.kmerator(seq, k, batcher.natype, name, i,
+			rc = batcher.doReverseComplement)
 		batch.add_all((k for k in recordGen if k.is_ab_checked()))
 		batch.write(doSort = True)
 		return batch
