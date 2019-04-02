@@ -5,11 +5,72 @@
 @description: methods for sequence manipulation
 '''
 
-from enum import Enum
+from enum import Enum, unique
+from heapq import merge
 import oligo_melting as om
+import re
+
+class SequenceCoords(object):
+	"""docstring for SequenceCoords"""
+
+	@unique
+	class STRAND(Enum):
+		"""docstring for STRAND"""
+		PLUS = 0
+		MINUS = 1
+		@property
+		def label(self):
+			return "+-"[self.value]
+
+	regexp = re.compile(''.join(['^(?P<ref>[a-zA-Z0-9\\.]+):',
+		'(?P<start>[0-9]+)-(?P<end>[0-9]+):(?P<strand>[\\+-])$']))
+
+	def __init__(self, ref, start, end, strand = STRAND.PLUS):
+		super(SequenceCoords, self).__init__()
+		assert start >= 0
+		assert end >= 0
+		assert strand in self.STRAND
+		self._ref = ref
+		self._start = start
+		self._end = end
+		self._strand = self.STRAND.PLUS
+
+	@property
+	def ref(self):
+		return self._ref
+	@property
+	def start(self):
+		return self._start
+	@property
+	def end(self):
+		return self._end
+	@property
+	def strand(self):
+		return self._strand
+	
+	@staticmethod
+	def reverse(strand):
+		if SequenceCoords.STRAND.PLUS == strand:
+			return SequenceCoords.STRAND.MINUS
+		else:
+			return SequenceCoords.STRAND.PLUS
+
+	def __repr__(self):
+		return "%s:%d-%d:%s" % (self.ref,
+			self.start, self.end, self.strand.label)
+
+	@staticmethod
+	def from_str(s):
+		ref, start, end, strand = SequenceCoords.regexp.search(s
+			).group("ref", "start", "end", "strand")
+		strand = list(SequenceCoords.STRAND)[[x.label
+			for x in list(SequenceCoords.STRAND)].index(strand)]
+		return SequenceCoords(ref, int(start), int(end), strand)
 
 class Sequence(om.Sequence):
 	"""docstring for Sequence"""
+
+	doReverseComplement = False
 
 	def __init__(self, seq, t, name = None):
 		super().__init__(seq, t, name)
@@ -21,7 +82,8 @@ class Sequence(om.Sequence):
 		Returns:
 			generator -- kmer generator
 		"""
-		return self.kmerator(self.text, k, self.natype, self.name)
+		return self.kmerator(self.text, k, self.natype, self.name,
+			rc = self.doReverseComplement)
 
 	def batches(self, k, batchSize):
 		"""Split the sequence in batches ready to be fed to the kmerator.
@@ -55,10 +117,10 @@ class Sequence(om.Sequence):
 			return self.kmers(k)
 		else:
 			return self.kmerator_batched(self.text, k, self.natype,
-				batchSize, self.name)
+				batchSize, self.name, rc = self.doReverseComplement)
 
 	@staticmethod
-	def kmerator(seq, k, t, prefix = "ref", prefix_start = 0):
+	def kmerator(seq, k, t, prefix = "ref", offset = 0, rc = False):
 		"""Extract k-mers from seq.
 		
 		Arguments:
@@ -68,11 +130,18 @@ class Sequence(om.Sequence):
 		
 		Keyword Arguments:
 			prefix {str} -- reference record name (default: {"ref"})
-			prefix_start {number} -- if this is a batch, current location for
-			                         shifting (default: {0})
+			offset {number} -- if this is a batch, current location for
+			                   shifting (default: {0})
 		"""
-		return (KMer(prefix, i+prefix_start, i+prefix_start+k, seq[i:i+k], t)
-				for i in range(len(seq)-k+1))
+		normGen = (KMer(prefix, i+offset, i+offset+k, seq[i:i+k], t)
+			for i in range(len(seq)-k+1))
+		if rc:
+			rcSeq = Sequence.mkrc(seq, t)
+			rcGen = (KMer(prefix, i+offset, i+offset+k, rcSeq[i:i+k], t)
+				for i in range(len(rcSeq)-k+1))
+			return merge(*[normGen, rcGen])
+		else:
+			return normGen
 
 	@staticmethod
 	def batcher(seq, k, batchSize):
@@ -92,7 +161,7 @@ class Sequence(om.Sequence):
 			yield (seq[max(i, i-k+1):min(len(seq)-k+1, i+batchSize)], i)
 
 	@staticmethod
-	def kmerator_batched(seq, k, t, batchSize = 1, prefix = "ref"):
+	def kmerator_batched(seq, k, t, batchSize = 1, prefix = "ref", rc = False):
 		"""Extract batches of k-mers from seq.
 		
 		Arguments:
@@ -109,34 +178,27 @@ class Sequence(om.Sequence):
 		"""
 		assert batchSize >= 1
 		if batchSize == 1:
-			return Sequence.kmerator(seq, k, t, prefix)
+			return Sequence.kmerator(seq, k, t, prefix, rc = rc)
 		else:
 			for (seq2beKmered, i) in Sequence.batcher(seq, k, batchSize):
 				yield Sequence.kmerator(seq2beKmered, k, t, prefix,
-					prefix_start = i)
+					offset = i, rc = rc)
 
 class KMer(Sequence):
 	"""docstring for KMer"""
 
-	class STRAND(Enum):
-		"""docstring for STRAND"""
-		PLUS = 1
-		MINUS = 2
-
 	def __init__(self, chrom, start, end, seq,
-		t = om.NATYPES.DNA, strand = STRAND.PLUS):
+		t = om.NATYPES.DNA, strand = SequenceCoords.STRAND.PLUS):
 		super().__init__(seq, t)
-		assert start >= 0
-		assert end >= 0
-		assert strand in self.STRAND
-		self.__chrom = chrom
-		self.__start = start
-		self.__end = end
-		self.__strand = strand
+		self._coords = SequenceCoords(chrom, start, end, strand)
 
 	@property
+	def coords(self):
+		return self._coords
+	
+	@property
 	def header(self):
-		return "%s:%d-%d" % (self.__chrom, self.__start, self.__end)
+		return str(self.coords)
 	@property
 	def seq(self):
 		return self.text
@@ -154,9 +216,9 @@ class KMer(Sequence):
 		Returns:
 			KMer
 		"""
-		chrom, coords = record[0].split(":")
-		start, end = [int(n) for n in coords.split("-")]
-		return KMer(chrom, start, end, record[1], t)
+		coords = SequenceCoords.from_str(record[0])
+		return KMer(coords.ref, coords.start, coords.end,
+			record[1], t, strand = coords.strand)
 	
 	@staticmethod
 	def from_file(*args, **kwargs):

@@ -16,7 +16,6 @@ from kman.batch import Batch, BatcherThreading
 from kman.seq import SequenceCount
 import numpy as np
 import os
-import re
 import tempfile
 import time
 from tqdm import tqdm
@@ -217,13 +216,11 @@ class KJoiner(object):
 			seq {str} -- sequence
 			vector {AbundanceVector}
 		"""
-		regexp = re.compile(
-			r'^(?P<name>[a-zA-Z0-9\\.]+):(?P<start>[0-9]+)-(?P<end>[0-9]+)$')
 		hcount = len(headers)
 		for header in headers:
-			m = regexp.search(header)
-			name, start, end = m.group("name", "start", "end")
-			vector.add_count(name, "+", int(start), hcount, len(seq))
+			coords = SequenceCoords.from_str(header)
+			vector.add_count(coords.ref, coords.strand, int(coords.start),
+				hcount, len(seq))
 
 	@staticmethod
 	def join_vector_count_masked(headers, seq, OH, vector, **kwargs):
@@ -235,18 +232,15 @@ class KJoiner(object):
 			seq {str} -- sequence
 			vector {AbundanceVector}
 		"""
-		regexp = re.compile(
-			r'^(?P<name>[a-zA-Z0-9\\.]+):(?P<start>[0-9]+)-(?P<end>[0-9]+)$')
-
-		headers = [regexp.search(h).group("name", "start") for h in headers]
+		headers = [SequenceCoords.from_str(h) for h in headers]
 		if not 1 == len(headers):
-			refList, refCounts = np.unique([h[0] for h in headers],
+			refList, refCounts = np.unique([h.ref for h in headers],
 				return_counts = True)
 
 			if not 1 == len(refList):
-				for name, start in headers:
-					hcount = refCounts[refList != name].sum()
-					vector.add_count(name, "+", int(start), hcount, len(seq))
+				for h in headers:
+					hcount = refCounts[refList != h.ref].sum()
+					vector.add_count(h.ref, "+", int(h.start), hcount, len(seq))
 
 	def _pre_join(self, outpath):
 		"""Prepares for joining.
