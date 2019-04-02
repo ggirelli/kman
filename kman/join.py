@@ -23,7 +23,15 @@ from tqdm import tqdm
 
 
 class Crawler(object):
-	"""docstring for Crawler"""
+	"""Crawling system.
+	
+	Allows for crawling along Batch records, or to group the records based on
+	their sequence and crawl directly through the groups.
+	
+	Variables:
+		doSort {bool} -- whether sorting should be performed while crawling
+		verbose {bool} -- whether to be verbose
+	"""
 
 	doSort = False
 	verbose = True
@@ -100,7 +108,16 @@ class Crawler(object):
 		yield (current_headers, current_seq)
 
 class KJoiner(object):
-	"""docstring for KJoiner"""
+	"""K-way joining system.
+	
+	Perform K-way joining of Batches of elements compatible with the Crawler
+	class. See the different MODEs of joining for more details.
+	
+	Variables:
+		DEFAULT_MODE {MODE} -- default join mode
+		__mode {MODE} -- join mode
+		__join_function {function} -- join method
+	"""
 
 	class MODE(Enum):
 		"""Modes of joining.
@@ -206,7 +223,7 @@ class KJoiner(object):
 		for header in headers:
 			m = regexp.search(header)
 			name, start, end = m.group("name", "start", "end")
-			vector.add_count(name, "+", int(start), hcount)
+			vector.add_count(name, "+", int(start), hcount, len(seq))
 
 	@staticmethod
 	def join_vector_count_masked(headers, seq, OH, vector, **kwargs):
@@ -229,7 +246,7 @@ class KJoiner(object):
 			if not 1 == len(refList):
 				for name, start in headers:
 					hcount = refCounts[refList != name].sum()
-					vector.add_count(name, "+", int(start), hcount)
+					vector.add_count(name, "+", int(start), hcount, len(seq))
 
 	def _pre_join(self, outpath):
 		"""Prepares for joining.
@@ -279,7 +296,7 @@ class KJoiner(object):
 			doSort {bool} -- whether batches need to be sorted
 							 (default: {False})
 		"""
-		kwargs = self._pre_join((outpath))
+		kwargs = self._pre_join(outpath)
 
 		crawler = Crawler()
 		for batch in crawler.do_batch(batches):
@@ -288,7 +305,18 @@ class KJoiner(object):
 		self._post_join(**kwargs)
 
 class SeqCountBatcher(BatcherThreading):
-	"""docstring for SeqCountBatcher"""
+	"""SequenceCount batchin system.
+	
+	Batching system to convert record batches into Batches of SequenceCount
+	records, which are optimized for uniquing/counting.
+	
+	Extends:
+		BatcherThreading
+	
+	Variables:
+		_type {type} -- Batch record type
+		__doSort {bool} -- whether to perform sorting while batching
+	"""
 
 	_type = SequenceCount
 	__doSort = False
@@ -365,7 +393,19 @@ class SeqCountBatcher(BatcherThreading):
 			fjoin(headers, seq, **kwargs)
 
 class KJoinerThreading(KJoiner):
-	"""docstring for KJoinerThreading"""
+	"""Parallelized K-joining system.
+	
+	Extends KJoiner class for parallelization.
+	
+	Extends:
+		KJoiner
+	
+	Variables:
+		_tmp {tempfile.TemporaryDirectory}
+		_threads {number} -- number of threads for parallelization
+		__batch_size {number} -- number of batches to join per thread
+		__doSort {bool} -- whether to sort while joining
+	"""
 
 	_tmp = None
 	_threads = 1
@@ -433,10 +473,19 @@ class KJoinerThreading(KJoiner):
 			self.__parallel_join(batches, outpath)
 
 class AbundanceVector(object):
-	"""docstring for AbundanceVector"""
+	"""AbundanceVector system.
+	
+	For each records, for each strand, generates a 1-dimensional array with
+	abundance counts.
+	
+	Variables:
+		__data {dict} -- stores abundance vectores
+		__ks {set} -- sequence lengths
+	"""
 
 	"""{ref:{strand:np.1darray}}"""
 	__data = {}
+	__ks = set()
 
 	def __init__(self):
 		super().__init__()
@@ -445,7 +494,7 @@ class AbundanceVector(object):
 	def data(self):
 		return self.__data
 
-	def add_count(self, ref, strand, pos, count, replace = False):
+	def add_count(self, ref, strand, pos, count, k, replace = False):
 		"""Add occurrence count to the vector.
 		
 		Arguments:
@@ -453,11 +502,16 @@ class AbundanceVector(object):
 			strand {str} -- strand type
 			pos {int} -- position on ref:strand
 			count {int} -- occurrence count
+			k {int} -- sequence length
 		
 		Keyword Arguments:
 			replace {bool} -- whether to allow for replacement of non-zero
 							  counts (default: {False})
 		"""
+		self.__ks.add(k)
+		assert_msg = "inconsistent sequence lengths: %s" % self.__ks
+		assert 1 == len(self.__ks), assert_msg
+
 		self.add_ref(ref, strand, pos + 1)
 		if not replace:
 			assert_msg = "cannot update a non-zero count without replace."
@@ -499,6 +553,7 @@ class AbundanceVector(object):
 			for strand in self.__data[ref].keys():
 				fname = "%s___%s.gz" % (ref, strand)
 				OH = gzip.open(os.path.join(dirpath, fname), "wb")
+				OH.write(b"# k=%d\n" % list(self.__ks)[0])
 				for count in tqdm(self.__data[ref][strand], desc = fname):
 					OH.write(b"%d\n" % count)
 				OH.close()

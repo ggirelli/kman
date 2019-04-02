@@ -17,7 +17,22 @@ import time
 from tqdm import tqdm
 
 class BatcherBase(object):
-	"""docstring for Batcher"""
+	"""Basic batching system.
+	
+	Builds a collection of equally sized batches. In each Batch, a record is an
+	instance of a class of the given size. Batch record type is consistent
+	across the collection.
+	
+	Variables:
+		DEFAULT_BATCH_SIZE {int} -- default batch size
+		DEFAULT_BATCH_TYPE {type} -- default batched record type
+		DEFAULT_NATYPE {om.NATYPES} -- default nucleic acid type
+		_tmp {tempfile.TemporaryDirectory}
+		_batches {list} -- list of Batch instances
+		__size {int} -- batch size
+		_type {type} -- batched record type
+		__natype {om.NATYPES} -- nucleic acid type
+	"""
 
 	DEFAULT_BATCH_SIZE = int(1e6)
 	DEFAULT_BATCH_TYPE = KMer
@@ -79,7 +94,16 @@ class BatcherBase(object):
 		self.collection[-1].add(record)
 
 class BatcherThreading(BatcherBase):
-	"""docstring for BatcherThreading"""
+	"""Parallelized batching system.
+	
+	Extends BatcherBase for parallelization.
+	
+	Extends:
+		BatcherBase
+	
+	Variables:
+		__threads {number} -- number of threads for parallelization
+	"""
 
 	class FEED_MODE(Enum):
 		"""Feeding modes.
@@ -143,7 +167,13 @@ class BatcherThreading(BatcherBase):
 			self._batches.extend(new_collection)
 
 class FastaBatcher(BatcherThreading):
-	"""docstring for FastaBatcher"""
+	"""FASTA file k-mer batching.
+	
+	Divides k-mer from the records of a FASTA file into batches.
+	
+	Extends:
+		BatcherThreading
+	"""
 
 	def __init__(self, threads = 1, size = None):
 		"""Initialize FastaBatcher instance.
@@ -178,7 +208,13 @@ class FastaBatcher(BatcherThreading):
 						self.FEED_MODE.APPEND)
 
 class FastaRecordBatcher(BatcherThreading):
-	"""docstring for FastaRecordBatcher"""
+	"""FASTA record batchin system.
+	
+	Divides k-mer from a single FASTA record into batches.
+	
+	Extends:
+		BatcherThreading
+	"""
 
 	def __init__(self, threads = 1, size = None, parent = None):
 		"""Initialize FastaRecordBatcher instance.
@@ -249,7 +285,20 @@ class FastaRecordBatcher(BatcherThreading):
 		return batch
 
 class Batch(object):
-	"""docstring for Batch"""
+	"""Batch container.
+	
+	Records in the Batch are accessible through the record_gen and sorted
+	methods, which source either from memory or from written files. A Batch
+	cannot be resized. After full size is reached, a new Batch should be created
+	
+	Variables:
+		__written {bool} -- if the batch was written to file
+		__i {number} -- current record location
+		__tmp_dir {tempfile.TemporaryDirectory}
+		__tmp {tempfile.TemporaryFile}
+		isFasta {bool} -- whether the output should be in fasta format
+		suffix {str} -- extension for the output temporary file
+	"""
 	
 	__written = False
 	__i = 0
