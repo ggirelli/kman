@@ -82,10 +82,13 @@ class KJoiner(object):
 			UNIQUE {number} -- preserve only unique sequences
 			SEQ_COUNT {number} -- count sequences
 			VEC_COUNT {number} -- produce abundance vector
+			VEC_COUNT_MASKED {number} -- produce abundance vector w/o counting
+										 abundance in same reference record
 		"""
 		UNIQUE = 1
 		SEQ_COUNT = 2
 		VEC_COUNT = 3
+		VEC_COUNT_MASKED = 4
 	DEFAULT_MODE = MODES.UNIQUE
 
 	__mode = DEFAULT_MODE
@@ -122,6 +125,8 @@ class KJoiner(object):
 			self.__join_function = self.join_sequence_count
 		elif self.mode == self.MODES.VEC_COUNT:
 			self.__join_function = self.join_vector_count
+		elif self.mode == self.MODES.VEC_COUNT_MASKED:
+			self.__join_function = self.join_vector_count_masked
 
 	@staticmethod
 	def join_unique(headers, seq, OH, **kwargs):
@@ -172,16 +177,45 @@ class KJoiner(object):
 			name, start, end = m.group("name", "start", "end")
 			vector.add_count(name, "+", int(start), hcount)
 
+	@staticmethod
+	def join_vector_count_masked(headers, seq, OH, vector, **kwargs):
+		"""Generate abundance vectors through joining.
+		
+		Arguments:
+			OH {io.TextIOWrapper} -- buffer to output file
+			headers {list} -- list of headers with seq
+			seq {str} -- sequence
+			vector {AbundanceVector}
+		"""
+		regexp = re.compile(
+			r'^(?P<name>[a-zA-Z0-9\\.]+):(?P<start>[0-9]+)-(?P<end>[0-9]+)$')
+
+		headers = [regexp.search(h).group("name", "start") for h in headers]
+		if 1 == len(headers):
+			name, start = headers[0]
+			vector.add_count(name, "+", int(start), 1)
+		else:
+			refList, refCounts = np.unique([h[0] for h in headers],
+				return_counts = True)
+
+			if 1 == len(refList):
+				for name, start in headers:
+					vector.add_count(name, "+", int(start), len(headers))
+			else:
+				for name, start in headers:
+					hcount = refCounts[refList != name].sum()
+					vector.add_count(name, "+", int(start), hcount)
+
 	def _pre_join(self, outpath):
 		kwargs = {'OH' : outpath}
-		if self.mode != self.MODES.VEC_COUNT:
+		if not self.mode.name.startswith("VEC_"):
 			kwargs['OH'] = open(outpath, "w+")
 		else:
 			kwargs["vector"] = AbundanceVector()
 		return kwargs
 
 	def _post_join(self, **kwargs):
-		if self.mode != self.MODES.VEC_COUNT:
+		if not self.mode.name.startswith("VEC_"):
 			kwargs['OH'].close()
 		else:
 			kwargs['vector'].write_to(kwargs['OH'])

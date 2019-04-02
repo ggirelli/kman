@@ -20,11 +20,17 @@ batcher.do(fasta, 30)
 # joiner.mode = joiner.MODES.VEC_COUNT
 # joiner.join(batcher.collection, "/mnt/data/COOLFISH/short.test.out")
 
+# joiner = km.join.KJoinerThreading()
+# joiner.threads = 10
+# joiner.batch_size = 2
+# #joiner.join(batcher.collection, "/mnt/data/COOLFISH/short.test.parallel.out.fa")
+# joiner.mode = joiner.MODES.SEQ_COUNT
+# joiner.join(batcher.collection, "/mnt/data/COOLFISH/short.test.parallel.out.txt")
+# joiner.mode = joiner.MODES.VEC_COUNT
+# joiner.join(batcher.collection, "/mnt/data/COOLFISH/short.test.parallel.out")
+
 joiner = km.join.KJoinerThreading()
 joiner.threads = 10
 joiner.batch_size = 2
-#joiner.join(batcher.collection, "/mnt/data/COOLFISH/short.test.parallel.out.fa")
-joiner.mode = joiner.MODES.SEQ_COUNT
-joiner.join(batcher.collection, "/mnt/data/COOLFISH/short.test.parallel.out.txt")
-joiner.mode = joiner.MODES.VEC_COUNT
-joiner.join(batcher.collection, "/mnt/data/COOLFISH/short.test.parallel.out")
+joiner.mode = joiner.MODES.VEC_COUNT_MASKED
+joiner.join(batcher.collection, "/mnt/data/COOLFISH/short.test.parallel.masked_np.out")
