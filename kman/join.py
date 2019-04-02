@@ -32,9 +32,29 @@ class Crawler(object):
 		super().__init__()
 
 	def count_records(self, batches):
+		"""Count records across batches.
+		
+		Arguments:
+			batches {list} -- list of Batches
+		
+		Returns:
+			int -- number of records
+		"""
 		return sum([b.current_size for b in batches])
 
 	def do_records(self, batches):
+		"""Crawl through the batches.
+
+		Produces a generator function that yields (r.header, r.seq) for each
+		record r across batches. Batches are crawled through their r.record_gen
+		if self.doSort==False, otherwise using r.sorted.
+		
+		Arguments:
+			batches {list} -- list of Batches
+		
+		Returns:
+			generator -- record generator
+		"""
 		assert all([type(b) == Batch for b in batches]), batches
 
 		if self.doSort:
@@ -49,6 +69,13 @@ class Crawler(object):
 		return crawler
 
 	def do_batch(self, batches):
+		"""[summary]
+		
+		[description]
+		
+		Arguments:
+			batches {[type]} -- [description]
+		"""
 		crawler = self.do_records(batches)
 		
 		first_record = next(crawler)
@@ -72,7 +99,7 @@ class Crawler(object):
 class KJoiner(object):
 	"""docstring for KJoiner"""
 
-	class MODES(Enum):
+	class MODE(Enum):
 		"""Modes of joining.
 		
 		Extends:
@@ -89,7 +116,7 @@ class KJoiner(object):
 		SEQ_COUNT = 2
 		VEC_COUNT = 3
 		VEC_COUNT_MASKED = 4
-	DEFAULT_MODE = MODES.UNIQUE
+	DEFAULT_MODE = MODE.UNIQUE
 
 	__mode = DEFAULT_MODE
 	__join_function = None
@@ -98,11 +125,11 @@ class KJoiner(object):
 		"""Initialize KJoiner.
 		
 		Keyword Arguments:
-			mode {KJoiner.MODES} -- (default: {None})
+			mode {KJoiner.MODE} -- (default: {None})
 		"""
 		super().__init__()
 		if type(mode) != type(None):
-			assert mode in self.MODES
+			assert mode in self.MODE
 			self.__mode = mode
 		self.__set_join_function()
 
@@ -111,7 +138,7 @@ class KJoiner(object):
 		return self.__mode
 	@mode.setter
 	def mode(self, mode):
-		assert mode in self.MODES
+		assert mode in self.MODE
 		self.__mode = mode
 		self.__set_join_function()
 	@property
@@ -119,13 +146,13 @@ class KJoiner(object):
 		return self.__join_function
 
 	def __set_join_function(self):
-		if self.mode == self.MODES.UNIQUE:
+		if self.mode == self.MODE.UNIQUE:
 			self.__join_function = self.join_unique
-		elif self.mode == self.MODES.SEQ_COUNT:
+		elif self.mode == self.MODE.SEQ_COUNT:
 			self.__join_function = self.join_sequence_count
-		elif self.mode == self.MODES.VEC_COUNT:
+		elif self.mode == self.MODE.VEC_COUNT:
 			self.__join_function = self.join_vector_count
-		elif self.mode == self.MODES.VEC_COUNT_MASKED:
+		elif self.mode == self.MODE.VEC_COUNT_MASKED:
 			self.__join_function = self.join_vector_count_masked
 
 	@staticmethod
@@ -273,7 +300,7 @@ class SeqCountBatcher(BatcherThreading):
 			)(delayed(SeqCountBatcher.build_batch
 				)(batchedRecords, self) for batchedRecords in batchList)
 
-		self.feed_collection(batches, self.FEED_MODES.REPLACE)
+		self.feed_collection(batches, self.FEED_MODE.REPLACE)
 
 	@staticmethod
 	def build_batch(recordBatchList, batcher):

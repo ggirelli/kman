@@ -5,6 +5,7 @@
 @description: methods for sequence manipulation
 '''
 
+from enum import Enum
 import oligo_melting as om
 
 class Sequence(om.Sequence):
@@ -117,13 +118,21 @@ class Sequence(om.Sequence):
 class KMer(Sequence):
 	"""docstring for KMer"""
 
-	def __init__(self, chrom, start, end, seq, t = om.NATYPES.DNA):
+	class STRAND(Enum):
+		"""docstring for STRAND"""
+		PLUS = 1
+		MINUS = 2
+
+	def __init__(self, chrom, start, end, seq,
+		t = om.NATYPES.DNA, strand = STRAND.PLUS):
 		super().__init__(seq, t)
 		assert start >= 0
 		assert end >= 0
+		assert strand in self.STRAND
 		self.__chrom = chrom
 		self.__start = start
 		self.__end = end
+		self.__strand = strand
 
 	@property
 	def header(self):

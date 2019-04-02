@@ -81,7 +81,7 @@ class BatcherBase(object):
 class BatcherThreading(BatcherBase):
 	"""docstring for BatcherThreading"""
 
-	class FEED_MODES(Enum):
+	class FEED_MODE(Enum):
 		"""Feeding modes.
 		
 		Used with feed_collection() method.
@@ -118,28 +118,28 @@ class BatcherThreading(BatcherBase):
 	def threads(self, t):
 		self.__threads = check_threads(t)
 
-	def feed_collection(self, new_collection, mode = FEED_MODES.FLOW):
+	def feed_collection(self, new_collection, mode = FEED_MODE.FLOW):
 		"""Feed new batch collection to the current one.
 		
 		Different modes of feeding are available, see documentation of
-		BatcherThreading.FEED_MODES for more details.
+		BatcherThreading.FEED_MODE for more details.
 		
 		Arguments:
 			new_collection {list} -- list of Batches
 		
 		Keyword Arguments:
-			mode {BatcherThreading.FEED_MODES} -- (default: {FEED_MODES.FLOW})
+			mode {BatcherThreading.FEED_MODE} -- (default: {FEED_MODE.FLOW})
 		"""
 		assert all([b.type == self.type for b in new_collection])
-		if mode == self.FEED_MODES.REPLACE:
+		if mode == self.FEED_MODE.REPLACE:
 			self._batches = new_collection
-		elif mode == self.FEED_MODES.FLOW:
+		elif mode == self.FEED_MODE.FLOW:
 			for bi in tqdm(range(len(new_collection))):
 				batch = new_collection.pop()
 				for record in batch.record_gen():
 					self.add_record(record)
 				batch.reset()
-		elif mode == self.FEED_MODES.APPEND:
+		elif mode == self.FEED_MODE.APPEND:
 			self._batches.extend(new_collection)
 
 class FastaBatcher(BatcherThreading):
@@ -173,11 +173,10 @@ class FastaBatcher(BatcherThreading):
 		with open(fasta, "r+") as FH:
 			for record in SimpleFastaParser(FH):
 				batcher.do(record, k)
-				self.feed_collection(batcher.collection, self.FEED_MODES.APPEND)
+				self.feed_collection(batcher.collection, self.FEED_MODE.APPEND)
 
 class FastaRecordBatcher(BatcherThreading):
 	"""docstring for FastaRecordBatcher"""
-
 
 	def __init__(self, threads = 1, size = None, parent = None):
 		"""Initialize FastaRecordBatcher instance.
@@ -211,6 +210,8 @@ class FastaRecordBatcher(BatcherThreading):
 			k {int} -- length of k-mers
 		"""
 		record_name = record[0].split(" ")[0]
+		print("Batching record '%s'..." % record_name)
+		
 		if 1 == self.threads:
 			kmerGen = Sequence.kmerator(record[1], k, self.natype, record_name)
 			for kmer in tqdm(kmerGen):
@@ -221,7 +222,7 @@ class FastaRecordBatcher(BatcherThreading):
 				)(delayed(FastaRecordBatcher.build_batch
 					)(seq, record_name, k, self, i)
 					for (seq, i) in Sequence.batcher(record[1], k, self.size))
-			self.feed_collection(batches, self.FEED_MODES.REPLACE)
+			self.feed_collection(batches, self.FEED_MODE.REPLACE)
 
 	@staticmethod
 	def build_batch(seq, name, k, batcher, i = 0):

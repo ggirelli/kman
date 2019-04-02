@@ -18,16 +18,34 @@ import sys
 import tempfile
 
 parser = argparse.ArgumentParser(description = '''
-Extract all k-mer (i.e., k-characters substrings) that appear in the input
-sequence only once.''', formatter_class = argparse.RawDescriptionHelpFormatter)
+Count occurrences of all k-mer (i.e., k-characters substrings) that appear in
+the input sequence. Depending on the mode, a different output is generated:
+
+         SEQ_COUNT a tabulation-separated table with sequence and count
+
+         VEC_COUNT a vector for each record in the input fasta, containing the
+                   occurrence count of each k-mer (start position-bound)
+
+  VEC_COUNT_MASKED a vector for each record in the input fasta, containing the
+                   occurrence count of each k-mer (start position-bound). Only
+                   occurrences in other records are counted.
+
+When using a VEC_* mode, the output will be stored in a folder with the name of
+the specified output, after removing the extension.
+''', formatter_class = argparse.RawDescriptionHelpFormatter)
 
 parser.add_argument('input', type = str, help = '''
 	Path to input fasta file.''')
 parser.add_argument('output', type = str, help = '''
-	Path to output fasta file.''')
+	Path to output tsv file.''')
 parser.add_argument('-k', type = int, required = True,
 	help = '''Oligonucleotide (substring) length in nucleotides.''')
 
+parser.add_argument('-m', type = str,
+	help = '''Choose counting mode. See description for more details.
+	Default: "%s"''' % km.join.KJoiner.MODE.SEQ_COUNT.name,
+	default = km.join.KJoiner.MODE.SEQ_COUNT.name,
+	choices = [m for m in dir(km.join.KJoiner.MODE) if "COUNT" in m])
 parser.add_argument('-b', type = int, default = 1e6,
 	help = '''Number of kmers per batch. Default: 1e6''')
 parser.add_argument('-t', type = int, default = 1,
@@ -38,7 +56,7 @@ parser.add_argument('-T', type = str, default = tempfile.gettempdir(),
 parser.add_argument('-R', dest = 'do_reverse', action = 'store_const',
 	const = True, default = False, help = '''Reverse complement sequences.''')
 
-version = "0.0.2"
+version = "0.0.1"
 parser.add_argument('--version', action = 'version',
 	version = '%s v%s' % (sys.argv[0], version,))
 
@@ -50,12 +68,14 @@ assert_msg = "path to an existing fasta file expected, file not found: '%s'" % (
 if not os.path.isdir(args.T): os.makedirs(args.T, exist_ok = True)
 tempfile.tempdir = args.T
 
+args.m = km.join.KJoiner.MODE[args.m]
+
 # RUN ==========================================================================
 
 batcher = km.batch.FastaBatcher(size = args.b, threads = args.t)
 batcher.do(args.input, args.k)
 
-joiner = km.join.KJoinerThreading()
+joiner = km.join.KJoinerThreading(args.m)
 joiner.threads = args.t
 joiner.batch_size = max(2, int(len(batcher.collection) / args.t))
 joiner.join(batcher.collection, args.output)
