@@ -69,13 +69,6 @@ class Crawler(object):
 		return crawler
 
 	def do_batch(self, batches):
-		"""[summary]
-		
-		[description]
-		
-		Arguments:
-			batches {[type]} -- [description]
-		"""
 		crawler = self.do_records(batches)
 		
 		first_record = next(crawler)
@@ -93,7 +86,7 @@ class Crawler(object):
 				yield (current_headers, current_seq)
 				current_seq = record[1]
 				current_headers = [record[0]]
-
+		
 		yield (current_headers, current_seq)
 
 class KJoiner(object):
@@ -218,17 +211,11 @@ class KJoiner(object):
 			r'^(?P<name>[a-zA-Z0-9\\.]+):(?P<start>[0-9]+)-(?P<end>[0-9]+)$')
 
 		headers = [regexp.search(h).group("name", "start") for h in headers]
-		if 1 == len(headers):
-			name, start = headers[0]
-			vector.add_count(name, "+", int(start), 1)
-		else:
+		if not 1 == len(headers):
 			refList, refCounts = np.unique([h[0] for h in headers],
 				return_counts = True)
 
-			if 1 == len(refList):
-				for name, start in headers:
-					vector.add_count(name, "+", int(start), len(headers))
-			else:
+			if not 1 == len(refList):
 				for name, start in headers:
 					hcount = refCounts[refList != name].sum()
 					vector.add_count(name, "+", int(start), hcount)
