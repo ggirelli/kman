@@ -56,7 +56,7 @@ class BatcherBase(object):
 			assert size >= 1
 			self.__size = int(size)
 		if type(None) == type(self._batches):
-			self._batches = [Batch(self)]
+			self._batches = [Batch.from_batcher(self)]
 
 	@property
 	def size(self):
@@ -80,7 +80,7 @@ class BatcherBase(object):
 		"""Add a new empty batch to the current collection."""
 		if self.collection[-1].is_full():
 			self.collection[-1].write()
-			self._batches.append(Batch(self))
+			self._batches.append(Batch.from_batcher(self))
 
 	def add_record(self, record):
 		"""Add a record to the currentcollection.
@@ -376,7 +376,7 @@ class FastaRecordBatcher(BatcherThreading):
 		Returns:
 			Batch
 		"""
-		batch = Batch(batcher)
+		batch = Batch.from_batcher(batcher)
 		recordGen = Sequence.kmerator(seq, k, batcher.natype, name, i,
 			rc = batcher.doReverseComplement)
 		batch.add_all((k for k in recordGen if k.is_ab_checked()))
@@ -406,21 +406,23 @@ class Batch(object):
 	isFasta = True
 	suffix = ".fa"
 
-	def __init__(self, batcher, size = 1):
+	def __init__(self, t, tmpDir, size = 1):
 		"""Initialize a Batch.
 		
-		Uses the parent Batcher to set default values.
-		
 		Arguments:
-			batcher {BatcherBase} -- parent batcher.
+			t {class} -- record type
+			tmpDir {str} -- path to temporary directory
+		
+		Keyword Arguments:
+			size {number} -- batch size (default: {1})
 		"""
 		super().__init__()
-		assert batcher.size >= 1
-		self.__size = max(int(batcher.size), size)
+		assert size >= 1
+		self.__size = int(size)
 		self.__remaining = self.__size
 		self.__records = [None] * self.__size
-		self.__type = batcher.type
-		self.__tmp_dir = batcher.tmp.name
+		self.__type = t
+		self.__tmp_dir = tmpDir
 
 	@property
 	def is_written(self):
@@ -539,6 +541,42 @@ class Batch(object):
 			TH.write("".join(self.to_write(f, doSort)))
 		self.__records = None
 		self.__written = True
+
+	@staticmethod
+	def from_file(path, t = KMer, isFasta = True):
+		"""Generate a Batch from a file.
+		
+		Used to link an existing file to a Batch.
+		
+		Arguments:
+			path {str} -- path to previously generated batch
+		
+		Keyword Arguments:
+			t {class} -- record type (default: {KMer})
+			isFasta {bool} -- whether the input is a fasta (default: {True})
+		"""
+		if isFasta and path.endswith(".gz"):
+			FH = gzip.open(path, "rt") 
+			size = sum([1 for record in SimpleFastaParser(FH)])
+		else:
+			FH = open(path, "r+")
+			size = sum([1 for line in FH])
+
+		batch = Batch(t, os.path.dirname(path), size)
+		batch.__tmp = FH
+
+	@staticmethod
+	def from_batcher(batcher, size = 1):
+		"""Initialize a Batch.
+		
+		Uses a Batcher to set default values.
+		
+		Arguments:
+			batcher {BatcherBase} -- parent batcher.
+		"""
+		assert batcher.size >= 1
+		size = max(int(batcher.size), size)
+		return Batch(batcher.type, batcher.tmp.name, size)
 
 	def reset(self):
 		"""Reset the batch.
