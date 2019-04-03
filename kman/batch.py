@@ -180,7 +180,12 @@ class FastaBatcher(BatcherThreading):
 		                               complement fo the sequences
 	"""
 
+	class MODE(Enum):
+		KMERS = 1
+		RECORDS = 2
+
 	_doReverseComplement = False
+	_mode = MODE.KMERS
 
 	def __init__(self, threads = 1, size = None):
 		"""Initialize FastaBatcher instance.
@@ -195,6 +200,13 @@ class FastaBatcher(BatcherThreading):
 		super().__init__(threads, size)
 
 	@property
+	def mode(self):
+		return self._mode
+	@mode.setter
+	def mode(self, m):
+		assert m in self.MODE
+		self._mode = m
+	@property
 	def doReverseComplement(self):
 		return self._doReverseComplement
 	@doReverseComplement.setter
@@ -202,6 +214,55 @@ class FastaBatcher(BatcherThreading):
 		assert type(True) == type(rc)
 		self._doReverseComplement = rc
 	
+	def __do_over_kmers(self, FH, k):
+		"""Parallelize over kmers.
+		
+		Use RecordBatcher to parallelize when batching the kmers.
+		
+		Arguments:
+			FH {io.TextIOWrapper} -- fasta file buffer
+			k {int} -- k-mer length
+		"""
+		batcher = FastaRecordBatcher(parent = self)
+		for record in SimpleFastaParser(FH):
+			batcher.do(record, k)
+			if 1 != self.threads:
+				self.feed_collection(batcher.collection,
+					self.FEED_MODE.APPEND)
+
+	def __do_over_records(self, FH, k):
+		"""Parallelize over FASTA records.
+		
+		Ran a non-parallelized RecordBatcher for each fasta record, in parallel.
+		
+		Arguments:
+			FH {io.TextIOWrapper} -- fasta file buffer
+			k {int} -- k-mer length
+		"""
+		def do_record(fastaBatcher, record, k):
+			"""Batch a single record.
+			
+			Function to be passed to Parallel(delayed(*)).
+			
+			Arguments:
+				fastaBatcher {FastaBatcher} -- batcher
+				record {tuple} -- (header, sequence)
+				k {int} -- k-mer length
+			
+			Returns:
+				list -- list of Batches
+			"""
+			batcher = FastaRecordBatcher(parent = self)
+			batcher.threads = 1
+			batcher.do(record, k, False)
+			return batcher.collection
+
+		batchCollections = Parallel(n_jobs = self.threads, verbose = 11
+			)(delayed(do_record)(self, record, k)
+			for record in SimpleFastaParser(FH))
+		for collection in batchCollections:
+			self.feed_collection(collection, self.FEED_MODE.APPEND)
+
 
 	def do(self, fasta, k):
 		"""Start batching the fasta file.
@@ -215,16 +276,16 @@ class FastaBatcher(BatcherThreading):
 		assert os.path.isfile(fasta)
 		assert k > 1
 
-		batcher = FastaRecordBatcher(parent = self)
 		if fasta.endswith(".gz"):
 			FH = gzip.open(fasta, "rt") 
 		else:
 			FH = open(fasta, "r+")
-		for record in SimpleFastaParser(FH):
-			batcher.do(record, k)
-			if 1 != self.threads:
-				self.feed_collection(batcher.collection,
-					self.FEED_MODE.APPEND)
+
+		if self._mode == self.MODE.KMERS:
+			self.__do_over_kmers(FH, k)
+		elif self._mode == self.MODE.RECORDS:
+			self.__do_over_records(FH, k)
+
 		FH.close()
 
 class FastaRecordBatcher(BatcherThreading):
@@ -273,7 +334,7 @@ class FastaRecordBatcher(BatcherThreading):
 		assert type(True) == type(rc)
 		self._doReverseComplement = rc
 
-	def do(self, record, k):
+	def do(self, record, k, verbose = True):
 		"""Start batching a fasta record.
 		
 		Requires a fasta record with header and sequence.
@@ -283,12 +344,13 @@ class FastaRecordBatcher(BatcherThreading):
 			k {int} -- length of k-mers
 		"""
 		record_name = record[0].split(" ")[0]
-		print("Batching record '%s'..." % record_name)
+		if verbose: print("Batching record '%s'..." % record_name)
 
 		if 1 == self.threads:
 			kmerGen = Sequence.kmerator(record[1], k, self.natype, record_name,
 				rc = self.doReverseComplement)
-			for kmer in tqdm(kmerGen):
+			if verbose: kmerGen = tqdm(kmerGen)
+			for kmer in kmerGen:
 				if kmer.is_ab_checked():
 					self.add_record(kmer)
 		else:
