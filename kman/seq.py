@@ -37,7 +37,7 @@ class SequenceCoords(object):
 		def label(self):
 			return "+-"[self.value]
 
-	regexp = re.compile(''.join(['^(?P<ref>[a-zA-Z0-9\\.]+):',
+	regexp = re.compile(''.join(['^(?P<ref>.+):',
 		'(?P<start>[0-9]+)-(?P<end>[0-9]+):(?P<strand>[\\+-])$']))
 
 	def __init__(self, ref, start, end, strand = STRAND.PLUS):
