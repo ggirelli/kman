@@ -475,13 +475,17 @@ class Batch(object):
 			record
 		"""
 		if self.is_written:
-			with open(self.tmp, "r+") as TH:
-				if self.isFasta:
-					for record in SimpleFastaParser(TH):
-						yield self.__type.from_file(record)
-				else:
-					for line in TH:
-						yield self.__type.from_file(line)
+			if self.tmp.endswith(".gz"):
+				TH = gzip.open(self.tmp, "rt")
+			else:
+				TH = open(self.tmp, "r+")
+			if self.isFasta:
+				for record in SimpleFastaParser(TH):
+					yield self.__type.from_file(record)
+			else:
+				for line in TH:
+					yield self.__type.from_file(line)
+			TH.close()
 		else:
 			for record in self.__records:
 				if not type(None) == type(record):
@@ -556,14 +560,17 @@ class Batch(object):
 			isFasta {bool} -- whether the input is a fasta (default: {True})
 		"""
 		if isFasta and path.endswith(".gz"):
-			FH = gzip.open(path, "rt") 
-			size = sum([1 for record in SimpleFastaParser(FH)])
+			with gzip.open(path, "rt") as FH:
+				size = sum([1 for record in SimpleFastaParser(FH)])
 		else:
-			FH = open(path, "r+")
-			size = sum([1 for line in FH])
-
+			with open(path, "r+") as FH:
+				size = sum([1 for line in FH])
 		batch = Batch(t, os.path.dirname(path), size)
-		batch.__tmp = FH
+		batch.__tmp = FH.name
+		batch.__i = size
+		batch.__remaining = 0
+		batch.__written = True
+		return(batch)
 
 	@staticmethod
 	def from_batcher(batcher, size = 1):

@@ -48,6 +48,8 @@ parser.add_argument('-t', type = int, default = 1,
 	help = '''Number of threads for parallelization.''')
 parser.add_argument('-T', type = str, default = tempfile.gettempdir(),
 	help = '''Temporary folder path. Default: "%s"''' % tempfile.gettempdir())
+parser.add_argument('-B', type = str, help = '''Path to folder with previously
+	generated batches. Useful to skip the batching step.''')
 
 parser.add_argument('-r', dest = 'do_records',
 	action = 'store_const', const = True, default = False,
@@ -70,18 +72,30 @@ tempfile.tempdir = args.T
 
 args.m = km.join.KJoiner.MODE[args.m]
 
+if type(None) != type(args.B):
+	assert_msg = "batching output folder not found: '%s'" % args.B
+	assert os.path.isdir(args.B), assert_msg
+	assert_msg = "the batching output folder is empty: '%s'" % args.B
+	assert 0 < len(os.listdir(args.B)), assert_msg
+
 # RUN ==========================================================================
 
-batcher = km.batch.FastaBatcher(size = args.b, threads = args.t)
-if args.do_records: batcher.mode = batcher.MODE.RECORDS
-print(batcher.mode)
-batcher.doReverseComplement = args.do_reverse
-batcher.do(args.input, args.k)
+if type(None) != type(args.B):
+	print("Loading previously generated batches from '%s'..." % args.B)
+	batches = [km.batch.Batch.from_file(os.path.join(args.B, fname))
+		for fname in os.listdir(args.B)]
+else:
+	batcher = km.batch.FastaBatcher(size = args.b, threads = args.t)
+	if args.do_records: batcher.mode = batcher.MODE.RECORDS
+	batcher.doReverseComplement = args.do_reverse
+	batcher.do(args.input, args.k)
+	batches = batcher.collection
 
+print("Joining...")
 joiner = km.join.KJoinerThreading(args.m)
 joiner.threads = args.t
-joiner.batch_size = max(2, int(len(batcher.collection) / args.t))
-joiner.join(batcher.collection, args.output)
+joiner.batch_size = max(2, int(len(batches) / args.t))
+joiner.join(batches, args.output)
 
 # END ==========================================================================
 
