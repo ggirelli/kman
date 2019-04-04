@@ -355,6 +355,7 @@ class SeqCountBatcher(BatcherThreading):
 				)(batchedRecords, self) for batchedRecords in batchList)
 
 		self.feed_collection(batches, self.FEED_MODE.REPLACE)
+		self.write_all()
 
 	@staticmethod
 	def build_batch(recordBatchList, batcher):
@@ -460,7 +461,7 @@ class KJoinerThreading(KJoiner):
 		batcher.doSort = self.doSort
 		batcher.do(recordBatches)
 		batcher.join(self.join_function, **kwargs)
-		
+
 		self._post_join(**kwargs)
 
 	def join(self, batches, outpath):
@@ -550,6 +551,7 @@ class AbundanceVector(object):
 		Arguments:
 			dirpath {str} -- path to output directory.
 		"""
+
 		dirpath = os.path.splitext(dirpath)[0]
 		assert not os.path.isfile(dirpath)
 		print('Writing output in "%s"' % dirpath)

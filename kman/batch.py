@@ -39,10 +39,12 @@ class BatcherBase(object):
 	DEFAULT_BATCH_TYPE = KMer
 	DEFAULT_NATYPE = om.NATYPES.DNA
 
+	_tmpH = None
 	_tmp = None
 	_batches = None
 	__size = DEFAULT_BATCH_SIZE
 	_type = DEFAULT_BATCH_TYPE
+	__natype = DEFAULT_NATYPE
 
 	def __init__(self, size = None, natype = None, tmp = None):
 		"""Initializes BatcherBase.
@@ -56,13 +58,16 @@ class BatcherBase(object):
 		if type(None) != type(size):
 			assert size >= 1
 			self.__size = int(size)
-		if type(None) == type(self._batches):
-			self._batches = [Batch.from_batcher(self)]
 		if type(None) != type(natype):
 			assert natype in om.NATYPES
-			self.__natype = DEFAULT_NATYPE
+			self.__natype = natype
 		if tempfile.TemporaryDirectory == type(tmp):
+			self._tmpH = tmp
+			self._tmp = tmp.name
+		elif type(None) != type(tmp):
 			self._tmp = tmp
+		if type(None) == type(self._batches):
+			self._batches = [Batch.from_batcher(self)]
 
 	@property
 	def size(self):
@@ -79,7 +84,8 @@ class BatcherBase(object):
 	@property
 	def tmp(self):
 		if type(None) == type(self._tmp):
-			self._tmp = tempfile.TemporaryDirectory(prefix = "kmanBatch")
+			self._tmpH = tempfile.TemporaryDirectory(prefix = "kmanBatch")
+			self._tmp = self._tmpH.name
 		return self._tmp
 
 	def new_batch(self):
@@ -99,6 +105,12 @@ class BatcherBase(object):
 		"""
 		self.new_batch() # Add new batch if needed
 		self.collection[-1].add(record)
+
+	def write_all(self):
+		for batch in self.collection:
+			if not batch.is_written:
+				if 0 != batch.current_size:
+					batch.write()
 
 class BatcherThreading(BatcherBase):
 	"""Parallelized batching system.
@@ -167,7 +179,7 @@ class BatcherThreading(BatcherBase):
 		if mode == self.FEED_MODE.REPLACE:
 			self._batches = new_collection
 		elif mode == self.FEED_MODE.FLOW:
-			for bi in tqdm(range(len(new_collection))):
+			for bi in tqdm(range(len(new_collection)), desc = "flowing"):
 				batch = new_collection.pop()
 				for record in batch.record_gen():
 					self.add_record(record)
@@ -280,7 +292,7 @@ class FastaBatcher(BatcherThreading):
 			k {int} -- k-mer length
 			feedMode {BatcherThreading.FEED_MODE}
 		"""
-		def do_record(fastaBatcher, record, k):
+		def do_record(size, natype, tmp, record, k):
 			"""Batch a single record.
 			
 			Function to be passed to Parallel(delayed(*)).
@@ -293,19 +305,17 @@ class FastaBatcher(BatcherThreading):
 			Returns:
 				list -- list of Batches
 			"""
-			batcher = FastaRecordBatcher.from_parent(fastaBatcher)
-			batcher.threads = 1
-			batcher.do(record, k, True)
-			print(("done", record))
+			batcher = FastaRecordBatcher(1, size, natype, tmp)
+			batcher.do(record, k, False)
 			return batcher.collection
 
-		recordList = (record for record in list(tqdm(SimpleFastaParser(FH))))
 		batchCollections = Parallel(n_jobs = self.threads, verbose = 11
-			)(delayed(do_record)(self, record, k)
-			for record in recordList)
-		recordList = None
-		for collection in batchCollections:
-			self.feed_collection(collection, feedMode)
+			)(delayed(do_record)(self.size, self.natype, self.tmp,
+				record, k) for record in SimpleFastaParser(FH))
+
+		self.feed_collection(list(itertools.chain(
+			*batchCollections)), feedMode)
+		self.write_all()
 
 	def do(self, fasta, k, feedMode = BatcherThreading.FEED_MODE.APPEND):
 		"""Start batching the fasta file.
@@ -392,6 +402,7 @@ class FastaRecordBatcher(BatcherThreading):
 					)(seq, record_name, k, self, i)
 					for (seq, i) in Sequence.batcher(record[1], k, self.size))
 			self.feed_collection(batches, self.FEED_MODE.REPLACE)
+		self.write_all()
 
 	@staticmethod
 	def build_batch(seq, name, k, batcher, i = 0):
@@ -416,13 +427,6 @@ class FastaRecordBatcher(BatcherThreading):
 		batch.write(doSort = True)
 		return batch
 
-	def inherit_from_parent(self, parent):
-		self.__size = parent.size
-		self._threads = parent.threads
-		self._doReverseComplement = parent.doReverseComplement
-		self.__natype = parent.natype
-		self._tmp = parent.tmp
-
 	@staticmethod
 	def from_parent(parent):
 		"""Initialize FastaRecordBatcher instance.
@@ -433,8 +437,8 @@ class FastaRecordBatcher(BatcherThreading):
 			parent {Batcher} -- parent batcher to inherit attributes from
 			                    (default: {None})
 		"""
-		batcher = FastaRecordBatcher(parent.threads, parent.size, parent.natype,
-			parent.tmp)
+		batcher = FastaRecordBatcher(parent.threads, parent.size,
+			parent.natype, parent.tmp)
 		batcher._doReverseComplement = parent.doReverseComplement
 		return batcher
 
@@ -641,7 +645,7 @@ class Batch(object):
 		"""
 		assert batcher.size >= 1
 		size = max(int(batcher.size), size)
-		return Batch(batcher.type, batcher.tmp.name, size)
+		return Batch(batcher.type, batcher.tmp, size)
 
 	def reset(self):
 		"""Reset the batch.

@@ -42,7 +42,7 @@ parser.add_argument('-m', type = str,
 	help = '''Choose counting mode. See description for more details.
 	Default: "%s"''' % km.join.KJoiner.MODE.SEQ_COUNT.name,
 	default = km.join.KJoiner.MODE.SEQ_COUNT.name,
-	choices = [m for m in dir(km.join.KJoiner.MODE) if "COUNT" in m])
+	choices = [m.name for m in list(km.join.KJoiner.MODE) if "COUNT" in m.name])
 parser.add_argument('-b', type = int, default = 1e6,
 	help = '''Number of kmers per batch. Default: 1e6''')
 parser.add_argument('-t', type = int, default = 1,
