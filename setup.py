@@ -44,7 +44,7 @@ setup(name='kman',
 		"oligo_melting",
 		"tqdm"
 	],
-	scripts=["bin/kmer_batch", "bin/kmer_count", "bin/kmer_uniq"],
+	scripts=["bin/kmer_batch", "bin/kmer_count", "bin/kmer_uniq", "bin/kmer_test"],
 	test_suite="nose.collector",
 	tests_require=["nose"],
 )

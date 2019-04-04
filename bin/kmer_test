@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+
+import kman as km
+import os
+from tqdm import tqdm
+
+dirPath = "/mnt/data/COOLFISH/hg19_gencode_v19_genes_sequences.batches"
+nTopElements = 100
+
+assert os.path.isdir(dirPath)
+
+batches = [km.batch.Batch.from_file(os.path.join(dirPath, fname), km.seq.KMer, True)
+	for fname in tqdm(os.listdir(dirPath)[:nTopElements])]
+
+joiner = km.join.KJoinerThreading(km.join.KJoiner.MODE.VEC_COUNT_MASKED)
+joiner.threads = 40
+joiner.join(batches, "/mnt/data/COOLFISH/hg19_gencode_v19_genes_sequences.test.out")
