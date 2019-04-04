@@ -315,13 +315,19 @@ class SeqCountBatcher(BatcherThreading):
 	_type = SequenceCount
 	__doSort = False
 
-	def __init__(self, n_batches = 10, threads = 1, parent = None):
-		if type(None) != type(parent):
-			assert KJoinerThreading == type(parent)
-			self._threads = parent.threads
-			threads = parent.threads
-			self._tmp = parent.tmp
-		super().__init__(threads)
+	def __init__(self, n_batches = 10, threads = 1,
+		size = None, natype = None, tmp = None):
+		"""Initialize SeqCountBatcher instance.
+		
+		Keyword Arguments:
+			n_batches {number} -- number of batches at a time (default: {10})
+			threads {int} -- number of threads for parallelization
+			                 (default: {1})
+			size {int} -- batch size
+			natype {om.NATYPES} -- nucleic acid type
+			tmp {tempfile.TemporaryDirectory}
+		"""
+		super().__init__(threads, size, natype, tmp)
 		self.n_batches = n_batches
 
 	@property
@@ -386,6 +392,11 @@ class SeqCountBatcher(BatcherThreading):
 			headers = list(chain(*headers))
 			fjoin(headers, seq, **kwargs)
 
+	@staticmethod
+	def from_parent(parent, n_batches):
+		assert KJoinerThreading == type(parent)
+		return SeqCountBatcher(n_batches, parent.threads, tmp = parent.tmp)
+
 class KJoinerThreading(KJoiner):
 	"""Parallelized K-joining system.
 	
@@ -445,7 +456,7 @@ class KJoinerThreading(KJoiner):
 		"""
 		kwargs = self._pre_join(outpath)
 
-		batcher = SeqCountBatcher(self.batch_size, parent = self)
+		batcher = SeqCountBatcher.from_parent(self, self.batch_size)
 		batcher.doSort = self.doSort
 		batcher.do(recordBatches)
 		batcher.join(self.join_function, **kwargs)

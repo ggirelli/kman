@@ -43,13 +43,14 @@ class BatcherBase(object):
 	_batches = None
 	__size = DEFAULT_BATCH_SIZE
 	_type = DEFAULT_BATCH_TYPE
-	__natype = DEFAULT_NATYPE
 
-	def __init__(self, size = None):
+	def __init__(self, size = None, natype = None, tmp = None):
 		"""Initializes BatcherBase.
 		
 		Keyword Arguments:
 			size {int} -- batching size (default: {None})
+			natype {om.NATYPES} -- nucleic acid type
+			tmp {tempfile.TemporaryDirectory}
 		"""
 		super().__init__()
 		if type(None) != type(size):
@@ -57,6 +58,11 @@ class BatcherBase(object):
 			self.__size = int(size)
 		if type(None) == type(self._batches):
 			self._batches = [Batch.from_batcher(self)]
+		if type(None) != type(natype):
+			assert natype in om.NATYPES
+			self.__natype = DEFAULT_NATYPE
+		if tempfile.TemporaryDirectory == type(tmp):
+			self._tmp = tmp
 
 	@property
 	def size(self):
@@ -125,15 +131,17 @@ class BatcherThreading(BatcherBase):
 
 	__threads = 1
 
-	def __init__(self, threads = 1, size = None):
+	def __init__(self, threads = 1, size = None, natype = None, tmp = None):
 		"""Initialize BatcherThreading.
 		
 		Keyword Arguments:
 			threads {number} -- number of threads for parallelization
 			                    (default: {1})
 			size {int} -- batching size (default: {None})
+			natype {om.NATYPES} -- nucleic acid type
+			tmp {tempfile.TemporaryDirectory}
 		"""
-		super().__init__(size)
+		super().__init__(size, natype, tmp)
 		self.threads = threads
 
 	@property
@@ -215,17 +223,19 @@ class FastaBatcher(BatcherThreading):
 	_doReverseComplement = False
 	_mode = MODE.KMERS
 
-	def __init__(self, threads = 1, size = None):
+	def __init__(self, threads = 1, size = None, natype = None, tmp = None):
 		"""Initialize FastaBatcher instance.
 		
 		A parent batcher class can be specified, whose attributes are inherited.
 		
 		Keyword Arguments:
 			threads {int} -- number of threads for parallelization
-			                 (overridden by parent.threads)
+			                 (default: {1})
 			size {int} -- batch size (overridden by parent.size)
+			natype {om.NATYPES} -- nucleic acid type
+			tmp {tempfile.TemporaryDirectory}
 		"""
-		super().__init__(threads, size)
+		super().__init__(threads, size, natype, tmp)
 
 	@property
 	def mode(self):
@@ -286,16 +296,16 @@ class FastaBatcher(BatcherThreading):
 			batcher = FastaRecordBatcher.from_parent(fastaBatcher)
 			batcher.threads = 1
 			batcher.do(record, k, True)
+			print(("done", record))
 			return batcher.collection
 
-		recordList = [record for record in tqdm(SimpleFastaParser(FH))]
+		recordList = (record for record in list(tqdm(SimpleFastaParser(FH))))
 		batchCollections = Parallel(n_jobs = self.threads, verbose = 11
 			)(delayed(do_record)(self, record, k)
 			for record in recordList)
 		recordList = None
 		for collection in batchCollections:
 			self.feed_collection(collection, feedMode)
-
 
 	def do(self, fasta, k, feedMode = BatcherThreading.FEED_MODE.APPEND):
 		"""Start batching the fasta file.
@@ -337,15 +347,17 @@ class FastaRecordBatcher(BatcherThreading):
 
 	_doReverseComplement = False
 
-	def __init__(self, threads = 1, size = None):
+	def __init__(self, threads = 1, size = None, natype = None, tmp = None):
 		"""Initialize FastaRecordBatcher instance.
 		
 		Keyword Arguments:
 			threads {int} -- number of threads for parallelization
-			                 (overridden by parent.threads)
+			                 (default: {1})
 			size {int} -- batch size (overridden by parent.size)
+			natype {om.NATYPES} -- nucleic acid type
+			tmp {tempfile.TemporaryDirectory}
 		"""
-		super().__init__(threads, size)
+		super().__init__(threads, size, natype, tmp)
 
 	@property
 	def doReverseComplement(self):
@@ -421,11 +433,9 @@ class FastaRecordBatcher(BatcherThreading):
 			parent {Batcher} -- parent batcher to inherit attributes from
 			                    (default: {None})
 		"""
-		batcher = FastaRecordBatcher(parent.threads, parent.size)
-		self._doReverseComplement = parent.doReverseComplement
-		self.__natype = parent.natype
-		self._batches = parent.collection
-		self._tmp = parent.tmp
+		batcher = FastaRecordBatcher(parent.threads, parent.size, parent.natype,
+			parent.tmp)
+		batcher._doReverseComplement = parent.doReverseComplement
 		return batcher
 
 class Batch(object):
