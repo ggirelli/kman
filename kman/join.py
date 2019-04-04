@@ -365,7 +365,7 @@ class SeqCountBatcher(BatcherThreading):
 		crawling.doSort = batcher.doSort
 		crawling.verbose = False
 
-		batch = Batch(batcher, crawling.count_records(recordBatchList))
+		batch = Batch.from_batcher(batcher, crawling.count_records(recordBatchList))
 		batch.isFasta = False
 		batch.add_all((SequenceCount(seq, headers)
 			for (headers, seq) in crawling.do_batch(recordBatchList)))
