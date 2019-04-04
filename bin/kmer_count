@@ -12,6 +12,7 @@ import oligo_melting as om
 import os
 import sys
 import tempfile
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description = '''
 Count occurrences of all k-mer (i.e., k-characters substrings) that appear in
@@ -82,8 +83,7 @@ if type(None) != type(args.B):
 
 if type(None) != type(args.B):
 	print("Loading previously generated batches from '%s'..." % args.B)
-	batches = [km.batch.Batch.from_file(os.path.join(args.B, fname))
-		for fname in os.listdir(args.B)]
+	batches = km.batch.BatcherThreading.from_files(args.B, args.t)
 else:
 	batcher = km.batch.FastaBatcher(size = args.b, threads = args.t)
 	if args.do_records: batcher.mode = batcher.MODE.RECORDS

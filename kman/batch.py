@@ -167,6 +167,34 @@ class BatcherThreading(BatcherBase):
 		elif mode == self.FEED_MODE.APPEND:
 			self._batches.extend(new_collection)
 
+	@staticmethod
+	def from_files(dirPath, threads, t = KMer, isFasta = True):
+		"""Load batches from file.
+		
+		Each file in the provided directory should be a written Batch.
+		
+		Arguments:
+			dirPath {str} -- path to batch directory
+			threads {int} -- number of threads for parallelization
+		
+		Keyword Arguments:
+			t {class} -- type of batch record (default: {KMer})
+			isFasta {bool} -- whether batches are fasta files (default: {True})
+		
+		Returns:
+			list -- list of Batches
+		"""
+		assert os.path.isdir(dirPath)
+		threads = check_threads(threads)
+		if 1 == threads:
+			return [Batch.from_file(os.path.join(dirPath, fname), t, isFasta)
+				for fname in tqdm(os.listdir(dirPath))]
+		else:
+			return Parallel(n_jobs = threads, verbose = 11)(
+				delayed(Batch.from_file)(
+					os.path.join(dirPath, fname), t, isFasta)
+				for fname in os.listdir(dirPath))
+
 class FastaBatcher(BatcherThreading):
 	"""FASTA file k-mer batching.
 	
@@ -565,12 +593,14 @@ class Batch(object):
 		else:
 			with open(path, "r+") as FH:
 				size = sum([1 for line in FH])
+		if 1 > size:
+			size = 2
 		batch = Batch(t, os.path.dirname(path), size)
 		batch.__tmp = FH.name
 		batch.__i = size
 		batch.__remaining = 0
 		batch.__written = True
-		return(batch)
+		return batch
 
 	@staticmethod
 	def from_batcher(batcher, size = 1):

@@ -65,10 +65,10 @@ class Crawler(object):
 
 		if self.doSort:
 			generators = [((r.header, r.seq) for r in b.sorted)
-				for b in batches]
+				for b in batches if not type(None) == type(b)]
 		else:
 			generators = [((r.header, r.seq) for r in b.record_gen())
-				for b in batches]
+				for b in batches if not type(None) == type(b)]
 
 		crawler = merge(*generators, key = lambda x: x[1])
 
