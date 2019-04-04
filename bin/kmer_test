@@ -1,17 +1,93 @@
 #!/usr/bin/env python3
 
+from Bio.SeqIO.FastaIO import SimpleFastaParser
+from joblib import Parallel, delayed
+import gzip
+import itertools
 import kman as km
 import os
+import sys
 from tqdm import tqdm
 
-dirPath = "/mnt/data/COOLFISH/hg19_gencode_v19_genes_sequences.batches"
+infasta = "hg19_gencode_v19_genes_sequences.fa"
+k = 30
+feedMode = km.batch.BatcherThreading.FEED_MODE.FLOW
+batchdir = "/mnt/data/COOLFISH/hg19_gencode_v19_genes_sequences.batches.test"
 nTopElements = 100
 
-assert os.path.isdir(dirPath)
+os.makedirs(batchdir, exist_ok = True)
+assert os.path.isdir(batchdir)
 
-batches = [km.batch.Batch.from_file(os.path.join(dirPath, fname), km.seq.KMer, True)
-	for fname in tqdm(os.listdir(dirPath)[:nTopElements])]
+batcher = km.batch.FastaBatcher(size = 1e5, threads = 30)
+batcher.mode = batcher.MODE.RECORDS
+batcher.doReverseComplement = True
 
-joiner = km.join.KJoinerThreading(km.join.KJoiner.MODE.VEC_COUNT_MASKED)
-joiner.threads = 40
+if infasta.endswith(".gz"):
+	FH = gzip.open(infasta, "rt") 
+else:
+	FH = open(infasta, "r+")
+
+if batcher._mode == batcher.MODE.KMERS:
+	recBatcher = km.batch.FastaRecordBatcher.from_parent(batcher)
+	for record in SimpleFastaParser(FH):
+		recBatcher.do(record, k)
+		if 1 != batcher.threads:
+			batcher.feed_collection(recBatcher.collection, feedMode)
+
+elif batcher._mode == batcher.MODE.RECORDS:
+	def do_record(size, natype, tmp, record, k):
+		"""Batch a single record.
+		
+		Function to be passed to Parallel(delayed(*)).
+		
+		Arguments:
+		    ...
+			record {tuple} -- (header, sequence)
+			k {int} -- k-mer length
+		
+		Returns:
+			list -- list of Batches
+		"""
+		recBatcher = km.batch.FastaRecordBatcher(1, size, natype, tmp)
+		recBatcher.do(record, k, False)
+		return recBatcher.collection
+	recordList = []
+	for record in SimpleFastaParser(FH):
+		if len(recordList) >= nTopElements:
+			break
+		recordList.append(record)
+
+	batchCollections = Parallel(n_jobs = batcher.threads, verbose = 100
+		)(delayed(do_record)(batcher.size, batcher.natype, batcher.tmp, record, k)
+		for record in recordList)
+	recordList = None
+
+	batcher.feed_collection(list(itertools.chain(*batchCollections)), feedMode)
+	batcher.write_all()
+
+FH.close()
+
+try:
+	batchList = [b for b in batcher.collection if os.path.isfile(b.tmp)]
+	for b in batchList:
+		gzname = os.path.join(batchdir, "%s.gz" % os.path.basename(b.tmp))
+		OH = gzip.open(gzname, "wb")
+		IH = open(b.tmp, "rb")
+		for line in IH:
+			OH.write(line)
+		IH.close()
+		OH.close()
+except IOError as e:
+	print("Unable to write to output directory '%s'.\n%s" % (batchdir, e))
+except:
+	print("Unexpected error:", sys.exc_info())
+
+
+
+batches = [km.batch.Batch.from_file(os.path.join(batchdir, fname), km.seq.KMer, True)
+	for fname in tqdm(os.listdir(batchdir)[:nTopElements], desc = "reading")]
+
+joiner = km.join.KJoinerThreading(km.join.KJoiner.MODE.VEC_COUNT)
+joiner.threads = 5
+joiner.batch_size = 3
 joiner.join(batches, "/mnt/data/COOLFISH/hg19_gencode_v19_genes_sequences.test.out")
