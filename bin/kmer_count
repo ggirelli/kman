@@ -94,7 +94,13 @@ else:
 print("Joining...")
 joiner = km.join.KJoinerThreading(args.m)
 joiner.threads = args.t
+
 joiner.batch_size = max(2, int(len(batches) / args.t))
+import resource
+rlimits = resource.getrlimit(resource.RLIMIT_NOFILE)
+joiner.batch_size = min(joiner.batch_size, rlimits[1])
+resource.setrlimit(resource.RLIMIT_NOFILE, (joiner.batch_size, rlimits[1]))
+
 joiner.join(batches, args.output)
 
 # END ==========================================================================
