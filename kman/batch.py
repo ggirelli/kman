@@ -242,7 +242,8 @@ class FastaBatcher(BatcherThreading):
 		assert type(True) == type(rc)
 		self._doReverseComplement = rc
 	
-	def __do_over_kmers(self, FH, k):
+	def __do_over_kmers(self, FH, k,
+		feedMode = BatcherThreading.FEED_MODE.APPEND):
 		"""Parallelize over kmers.
 		
 		Use RecordBatcher to parallelize when batching the kmers.
@@ -250,15 +251,16 @@ class FastaBatcher(BatcherThreading):
 		Arguments:
 			FH {io.TextIOWrapper} -- fasta file buffer
 			k {int} -- k-mer length
+			feedMode {BatcherThreading.FEED_MODE}
 		"""
-		batcher = FastaRecordBatcher(parent = self)
+		batcher = FastaRecordBatcher.from_parent(self)
 		for record in SimpleFastaParser(FH):
 			batcher.do(record, k)
 			if 1 != self.threads:
-				self.feed_collection(batcher.collection,
-					self.FEED_MODE.APPEND)
+				self.feed_collection(batcher.collection, feedMode)
 
-	def __do_over_records(self, FH, k):
+	def __do_over_records(self, FH, k,
+		feedMode = BatcherThreading.FEED_MODE.APPEND):
 		"""Parallelize over FASTA records.
 		
 		Ran a non-parallelized RecordBatcher for each fasta record, in parallel.
@@ -266,6 +268,7 @@ class FastaBatcher(BatcherThreading):
 		Arguments:
 			FH {io.TextIOWrapper} -- fasta file buffer
 			k {int} -- k-mer length
+			feedMode {BatcherThreading.FEED_MODE}
 		"""
 		def do_record(fastaBatcher, record, k):
 			"""Batch a single record.
@@ -280,19 +283,21 @@ class FastaBatcher(BatcherThreading):
 			Returns:
 				list -- list of Batches
 			"""
-			batcher = FastaRecordBatcher(parent = self)
+			batcher = FastaRecordBatcher.from_parent(fastaBatcher)
 			batcher.threads = 1
-			batcher.do(record, k, False)
+			batcher.do(record, k, True)
 			return batcher.collection
 
+		recordList = [record for record in tqdm(SimpleFastaParser(FH))]
 		batchCollections = Parallel(n_jobs = self.threads, verbose = 11
 			)(delayed(do_record)(self, record, k)
-			for record in SimpleFastaParser(FH))
+			for record in recordList)
+		recordList = None
 		for collection in batchCollections:
-			self.feed_collection(collection, self.FEED_MODE.APPEND)
+			self.feed_collection(collection, feedMode)
 
 
-	def do(self, fasta, k):
+	def do(self, fasta, k, feedMode = BatcherThreading.FEED_MODE.APPEND):
 		"""Start batching the fasta file.
 		
 		Batches a fasta file up to the specified number (self.size) of k-mers.
@@ -300,6 +305,7 @@ class FastaBatcher(BatcherThreading):
 		Arguments:
 			fasta {string} -- path to fasta file
 			k {int} -- length of k-mers
+			feedMode {BatcherThreading.FEED_MODE}
 		"""
 		assert os.path.isfile(fasta)
 		assert k > 1
@@ -310,9 +316,9 @@ class FastaBatcher(BatcherThreading):
 			FH = open(fasta, "r+")
 
 		if self._mode == self.MODE.KMERS:
-			self.__do_over_kmers(FH, k)
+			self.__do_over_kmers(FH, k, feedMode)
 		elif self._mode == self.MODE.RECORDS:
-			self.__do_over_records(FH, k)
+			self.__do_over_records(FH, k, feedMode)
 
 		FH.close()
 
@@ -331,27 +337,14 @@ class FastaRecordBatcher(BatcherThreading):
 
 	_doReverseComplement = False
 
-	def __init__(self, threads = 1, size = None, parent = None):
+	def __init__(self, threads = 1, size = None):
 		"""Initialize FastaRecordBatcher instance.
-		
-		A parent batcher class can be specified, whose attributes are inherited.
 		
 		Keyword Arguments:
 			threads {int} -- number of threads for parallelization
 			                 (overridden by parent.threads)
 			size {int} -- batch size (overridden by parent.size)
-			parent {Batcher} -- parent batcher to inherit attributes from
-			                    (default: {None})
 		"""
-		if type(None) != type(parent):
-			self.__size = parent.size
-			size = parent.size
-			self.threads = parent.threads
-			threads = parent.threads
-			self._doReverseComplement = parent.doReverseComplement
-			self.__natype = parent.natype
-			self._batches = parent.collection
-			self._tmp = parent.tmp
 		super().__init__(threads, size)
 
 	@property
@@ -410,6 +403,30 @@ class FastaRecordBatcher(BatcherThreading):
 		batch.add_all((k for k in recordGen if k.is_ab_checked()))
 		batch.write(doSort = True)
 		return batch
+
+	def inherit_from_parent(self, parent):
+		self.__size = parent.size
+		self._threads = parent.threads
+		self._doReverseComplement = parent.doReverseComplement
+		self.__natype = parent.natype
+		self._tmp = parent.tmp
+
+	@staticmethod
+	def from_parent(parent):
+		"""Initialize FastaRecordBatcher instance.
+		
+		A parent batcher class can be specified, whose attributes are inherited.
+		
+		Keyword Arguments:
+			parent {Batcher} -- parent batcher to inherit attributes from
+			                    (default: {None})
+		"""
+		batcher = FastaRecordBatcher(parent.threads, parent.size)
+		self._doReverseComplement = parent.doReverseComplement
+		self.__natype = parent.natype
+		self._batches = parent.collection
+		self._tmp = parent.tmp
+		return batcher
 
 class Batch(object):
 	"""Batch container.
@@ -588,18 +605,19 @@ class Batch(object):
 			isFasta {bool} -- whether the input is a fasta (default: {True})
 		"""
 		if isFasta and path.endswith(".gz"):
-			with gzip.open(path, "rt") as FH:
-				size = sum([1 for record in SimpleFastaParser(FH)])
+			FH = gzip.open(path, "rt")
+			size = max(2, sum(1 for record in SimpleFastaParser(FH)))
 		else:
-			with open(path, "r+") as FH:
-				size = sum([1 for line in FH])
-		if 1 > size:
-			size = 2
+			FH = open(path, "r+")
+			size = max(2, sum(1 for line in FH))
+
 		batch = Batch(t, os.path.dirname(path), size)
 		batch.__tmp = FH.name
 		batch.__i = size
 		batch.__remaining = 0
 		batch.__written = True
+
+		FH.close()
 		return batch
 
 	@staticmethod
