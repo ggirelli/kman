@@ -9,6 +9,7 @@ from Bio.SeqIO.FastaIO import SimpleFastaParser
 from enum import Enum
 from ggc.args import check_threads
 import gzip
+import itertools
 from kman.seq import KMer, Sequence
 from joblib import Parallel, delayed
 import oligo_melting as om
@@ -533,18 +534,37 @@ class Batch(object):
 		Yields:
 			record
 		"""
+		# if self.is_written:
+		# 	if self.tmp.endswith(".gz"):
+		# 		TH = gzip.open(self.tmp, "rt")
+		# 	else:
+		# 		TH = open(self.tmp, "r+")
+		# 	if self.isFasta:
+		# 		for record in SimpleFastaParser(TH):
+		# 			yield self.__type.from_file(record)
+		# 	else:
+		# 		for line in TH:
+		# 			yield self.__type.from_file(line)
+		# 	TH.close()
 		if self.is_written:
-			if self.tmp.endswith(".gz"):
-				TH = gzip.open(self.tmp, "rt")
-			else:
-				TH = open(self.tmp, "r+")
 			if self.isFasta:
-				for record in SimpleFastaParser(TH):
-					yield self.__type.from_file(record)
+				if self.tmp.endswith(".gz"):
+					with gzip.open(self.tmp, "rt") as TH:
+						for record in SimpleFastaParser(TH):
+							yield self.__type.from_file(record)
+				else:
+					with open(self.tmp, "r+") as TH:
+						for record in SimpleFastaParser(TH):
+							yield self.__type.from_file(record)
 			else:
-				for line in TH:
-					yield self.__type.from_file(line)
-			TH.close()
+				if self.tmp.endswith(".gz"):
+					with gzip.open(self.tmp, "rt") as TH:
+						for line in TH:
+							yield self.__type.from_file(line)
+				else:
+					with open(self.tmp, "r+") as TH:
+						for line in TH:
+							yield self.__type.from_file(line)
 		else:
 			for record in self.__records:
 				if not type(None) == type(record):

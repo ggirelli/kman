@@ -76,7 +76,7 @@ batcher.do(args.input, args.k, args.m)
 os.makedirs(args.o, exist_ok = True)
 
 try:
-	batchList = [b for b in batcher.collection if os.path.isfile(b.tmp)]
+	batchList = tqdm([b for b in batcher.collection if os.path.isfile(b.tmp)])
 	if args.do_compress:
 		for b in batchList:
 			gzname = os.path.join(args.o, "%s.gz" % os.path.basename(b.tmp))
