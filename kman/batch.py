@@ -10,7 +10,8 @@ from enum import Enum
 from ggc.args import check_threads
 import gzip
 import itertools
-from kman.seq import KMer, Sequence, SmartFastaParser
+from kman.seq import KMer, Sequence
+from kman.io import SmartFastaParser
 from joblib import Parallel, delayed
 import oligo_melting as om
 import os
