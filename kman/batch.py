@@ -10,7 +10,7 @@ from enum import Enum
 from ggc.args import check_threads
 import gzip
 import itertools
-from kman.seq import KMer, Sequence
+from kman.seq import KMer, Sequence, SmartFastaParser
 from joblib import Parallel, delayed
 import oligo_melting as om
 import os
@@ -277,7 +277,7 @@ class FastaBatcher(BatcherThreading):
 			feedMode {BatcherThreading.FEED_MODE}
 		"""
 		batcher = FastaRecordBatcher.from_parent(self)
-		for record in SimpleFastaParser(FH):
+		for record in SmartFastaParser(FH).parse():
 			batcher.do(record, k)
 			if 1 != self.threads:
 				self.feed_collection(batcher.collection, feedMode)
@@ -312,7 +312,7 @@ class FastaBatcher(BatcherThreading):
 
 		batchCollections = Parallel(n_jobs = self.threads, verbose = 11
 			)(delayed(do_record)(self.size, self.natype, self.tmp,
-				record, k) for record in SimpleFastaParser(FH))
+				record, k) for record in SmartFastaParser(FH).parse())
 
 		self.feed_collection(list(itertools.chain(
 			*batchCollections)), feedMode)
@@ -534,37 +534,18 @@ class Batch(object):
 		Yields:
 			record
 		"""
-		# if self.is_written:
-		# 	if self.tmp.endswith(".gz"):
-		# 		TH = gzip.open(self.tmp, "rt")
-		# 	else:
-		# 		TH = open(self.tmp, "r+")
-		# 	if self.isFasta:
-		# 		for record in SimpleFastaParser(TH):
-		# 			yield self.__type.from_file(record)
-		# 	else:
-		# 		for line in TH:
-		# 			yield self.__type.from_file(line)
-		# 	TH.close()
 		if self.is_written:
-			if self.isFasta:
-				if self.tmp.endswith(".gz"):
-					with gzip.open(self.tmp, "rt") as TH:
-						for record in SimpleFastaParser(TH):
-							yield self.__type.from_file(record)
-				else:
-					with open(self.tmp, "r+") as TH:
-						for record in SimpleFastaParser(TH):
-							yield self.__type.from_file(record)
+			if self.tmp.endswith(".gz"):
+				TH = gzip.open(self.tmp, "rt")
 			else:
-				if self.tmp.endswith(".gz"):
-					with gzip.open(self.tmp, "rt") as TH:
-						for line in TH:
-							yield self.__type.from_file(line)
-				else:
-					with open(self.tmp, "r+") as TH:
-						for line in TH:
-							yield self.__type.from_file(line)
+				TH = open(self.tmp, "r+")
+			if self.isFasta:
+				for record in SmartFastaParser(TH).parse():
+					yield self.__type.from_file(record)
+			else:
+				for line in TH:
+					yield self.__type.from_file(line)
+			TH.close()
 		else:
 			for record in self.__records:
 				if not type(None) == type(record):
@@ -626,7 +607,7 @@ class Batch(object):
 		self.__written = True
 
 	@staticmethod
-	def from_file(path, t = KMer, isFasta = True):
+	def from_file(path, t = KMer, isFasta = True, smart = True):
 		"""Generate a Batch from a file.
 		
 		Used to link an existing file to a Batch.
