@@ -33,6 +33,7 @@ class Crawler(object):
 
 	doSort = False
 	verbose = True
+	desc = ""
 
 	def __init__(self):
 		super().__init__()
@@ -92,7 +93,7 @@ class Crawler(object):
 		current_headers = [first_record[0]]
 
 		if self.verbose:
-			crawler = tqdm(crawler, initial = 1,
+			crawler = tqdm(crawler, initial = 1, desc = self.desc,
 				total = self.count_records(batches))
 
 		for record in crawler:
@@ -352,32 +353,35 @@ class SeqCountBatcher(BatcherThreading):
 
 		batches = Parallel(n_jobs = self.threads, verbose = 11
 			)(delayed(SeqCountBatcher.build_batch
-				)(batchedRecords, self) for batchedRecords in batchList)
+				)(batchedRecords, self.type, self.tmp, self.doSort)
+				for batchedRecords in batchList)
 
 		self.feed_collection(batches, self.FEED_MODE.REPLACE)
 		self.write_all()
 
 	@staticmethod
-	def build_batch(recordBatchList, batcher):
+	def build_batch(recordBatchList, recordType, tmpDir, doSort = False):
 		"""Builds a Batch.
 		
 		Arguments:
 			recordBatchList {list} -- list of Batches
-			batcher {BatcherBase} -- parent
+			recordType {class} -- batch record type
+			tmpDir {str} -- path to temporary directory
 		
 		Returns:
 			Batch
 		"""
 		crawling = Crawler()
-		crawling.doSort = batcher.doSort
+		crawling.doSort = doSort
 		crawling.verbose = False
 
-		batch = Batch.from_batcher(batcher, crawling.count_records(recordBatchList))
+		batch = Batch(recordType, tmpDir, 
+			crawling.count_records(recordBatchList))
 		batch.isFasta = False
 		batch.add_all((SequenceCount(seq, headers)
 			for (headers, seq) in crawling.do_batch(recordBatchList)))
 		batch.suffix = ".txt"
-		batch.write(f = "as_text", doSort = batcher.doSort)
+		batch.write(f = "as_text", doSort = doSort)
 
 		return batch
 
@@ -389,6 +393,8 @@ class SeqCountBatcher(BatcherThreading):
 			**kwargs {dict} -- join function keyword arguments
 		"""
 		crawler = Crawler()
+		crawler.verbose = True
+		crawler.desc = "Final joining..."
 		for headers, seq in crawler.do_batch(self.collection):
 			headers = list(chain(*headers))
 			fjoin(headers, seq, **kwargs)
@@ -459,6 +465,7 @@ class KJoinerThreading(KJoiner):
 
 		batcher = SeqCountBatcher.from_parent(self, self.batch_size)
 		batcher.doSort = self.doSort
+		print("Intermediate batching...")
 		batcher.do(recordBatches)
 		batcher.join(self.join_function, **kwargs)
 

@@ -5,7 +5,6 @@
 @description: methods for sequence manipulation
 '''
 
-from Bio.SeqIO.FastaIO import SimpleFastaParser
 import gzip
 import io
 
@@ -60,21 +59,10 @@ class SmartFastaParser(object):
 		identifier (the first word) and comment or description.
 
 		Additionally, keep the Fasta handler open only when strictly necessary.
-
-		>>> with open("Fasta/dups.fasta") as handle:
-		...     for values in SimpleFastaParser(handle):
-		...         print(values)
-		...
-		('alpha', 'ACGTA')
-		('beta', 'CGTC')
-		('gamma', 'CCGCC')
-		('alpha (again - this is a dup entry to test the idx code)', 'ACGTA')
-		('delta', 'CGCGC')
-		
 		"""
-		# Skip any text before the first record (e.g. blank lines, comments)
 		self.__reopen()
 
+		# Skip any text before the first record (e.g. blank lines, comments)
 		while True:
 			line = self.__FH.readline()
 			self.__pos = self.__FH.tell()
@@ -103,16 +91,13 @@ class SmartFastaParser(object):
 					self.__pos = self.__FH.tell()
 				lines.append(line.rstrip())
 				line = self.__FH.readline()
-
-			# Remove trailing whitespace, and any internal spaces
-			# (and any embedded \r which are possible in mangled files
-			# when not opened in universal read lines mode)
 			
 			self.__FH.close()
 			yield title, "".join(lines).replace(" ", "").replace("\r", "")
 
 			if not line:
-				return  # StopIteration
+				return
+			
 			line = None
 
 		assert False, "Should not reach this line"
