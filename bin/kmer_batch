@@ -28,9 +28,9 @@ parser.add_argument('-k', type = int, required = True,
 
 parser.add_argument('-m', type = str,
 	help = '''Choose batching mode. See description for more details.
-	Default: "%s"''' % km.batch.BatcherThreading.FEED_MODE.APPEND.name,
-	default = km.batch.BatcherThreading.FEED_MODE.APPEND.name,
-	choices = [m.name for m in list(km.batch.BatcherThreading.FEED_MODE)])
+	Default: "%s"''' % km.batcher.BatcherThreading.FEED_MODE.APPEND.name,
+	default = km.batcher.BatcherThreading.FEED_MODE.APPEND.name,
+	choices = [m.name for m in list(km.batcher.BatcherThreading.FEED_MODE)])
 parser.add_argument('-b', type = int, default = 1e6,
 	help = '''Number of kmers per batch. Default: 1e6''')
 parser.add_argument('-t', type = int, default = 1,
