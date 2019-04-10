@@ -12,7 +12,8 @@ from heapq import merge
 import io
 from itertools import chain
 from joblib import Parallel, delayed
-from kman.batch import Batch, BatcherThreading
+from kman.batch import Batch, BatchAppendable
+from kman.batcher import BatcherThreading
 from kman.seq import SequenceCoords, SequenceCount
 import numpy as np
 import os
@@ -32,6 +33,7 @@ class Crawler(object):
 	"""
 
 	doSort = False
+	doSmart = False
 	verbose = True
 	desc = ""
 
@@ -62,13 +64,14 @@ class Crawler(object):
 		Returns:
 			generator -- record generator
 		"""
-		assert all([type(b) == Batch for b in batches]), batches
+		assert all([type(b) in [Batch, BatchAppendable] for b in batches])
 
 		if self.doSort:
-			generators = [((r.header, r.seq) for r in b.sorted)
+			generators = [((r.header, r.seq) for r in b.sorted(self.doSmart))
 				for b in batches if not type(None) == type(b)]
 		else:
-			generators = [((r.header, r.seq) for r in b.record_gen())
+			generators = [((r.header, r.seq)
+				for r in b.record_gen(self.doSmart))
 				for b in batches if not type(None) == type(b)]
 
 		crawler = merge(*generators, key = lambda x: x[1])
@@ -294,6 +297,7 @@ class KJoiner(object):
 		kwargs = self._pre_join(outpath)
 
 		crawler = Crawler()
+		print("Joining...")
 		for batch in crawler.do_batch(batches):
 			self.join_function(*batch, **kwargs)
 
@@ -350,14 +354,11 @@ class SeqCountBatcher(BatcherThreading):
 		"""
 		batchList = [recordBatch[i:min(len(recordBatch), i+self.n_batches)]
 			for i in range(0, len(recordBatch), self.n_batches)]
-
 		batches = Parallel(n_jobs = self.threads, verbose = 11
 			)(delayed(SeqCountBatcher.build_batch
 				)(batchedRecords, self.type, self.tmp, self.doSort)
 				for batchedRecords in batchList)
-
 		self.feed_collection(batches, self.FEED_MODE.REPLACE)
-		self.write_all()
 
 	@staticmethod
 	def build_batch(recordBatchList, recordType, tmpDir, doSort = False):
@@ -373,15 +374,17 @@ class SeqCountBatcher(BatcherThreading):
 		"""
 		crawling = Crawler()
 		crawling.doSort = doSort
+		crawling.doSmart = True
 		crawling.verbose = False
 
-		batch = Batch(recordType, tmpDir, 
+		batch = BatchAppendable(recordType, tmpDir, 
 			crawling.count_records(recordBatchList))
 		batch.isFasta = False
-		batch.add_all((SequenceCount(seq, headers)
-			for (headers, seq) in crawling.do_batch(recordBatchList)))
 		batch.suffix = ".txt"
-		batch.write(f = "as_text", doSort = doSort)
+		batch.add_all((SequenceCount(seq, headers)
+			for (headers, seq) in crawling.do_batch(recordBatchList)),
+			f = "as_text")
+		batch.write(f = "as_text")
 
 		return batch
 
@@ -393,7 +396,7 @@ class SeqCountBatcher(BatcherThreading):
 			**kwargs {dict} -- join function keyword arguments
 		"""
 		crawler = Crawler()
-		crawler.verbose = True
+		crawler.doSmart = True
 		crawler.desc = "Final joining..."
 		for headers, seq in crawler.do_batch(self.collection):
 			headers = list(chain(*headers))
@@ -467,6 +470,7 @@ class KJoinerThreading(KJoiner):
 		batcher.doSort = self.doSort
 		print("Intermediate batching...")
 		batcher.do(recordBatches)
+		print("Joining...")
 		batcher.join(self.join_function, **kwargs)
 
 		self._post_join(**kwargs)

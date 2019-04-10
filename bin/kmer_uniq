@@ -62,15 +62,14 @@ if type(None) != type(args.B):
 
 if type(None) != type(args.B):
 	print("Loading previously generated batches from '%s'..." % args.B)
-	batches = km.batch.BatcherThreading.from_files(args.B, args.t)
+	batches = km.batcher.BatcherThreading.from_files(args.B, args.t)
 else:
-	batcher = km.batch.FastaBatcher(size = args.b, threads = args.t)
+	batcher = km.batcher.FastaBatcher(size = args.b, threads = args.t)
 	if args.do_records: batcher.mode = batcher.MODE.RECORDS
 	batcher.do(args.input, args.k)
 	batcher.doReverseComplement = args.do_reverse
 	batches = batcher.collection
 
-print("Joining...")
 joiner = km.join.KJoinerThreading()
 joiner.threads = args.t
 joiner.batch_size = max(2, int(len(batches) / args.t))

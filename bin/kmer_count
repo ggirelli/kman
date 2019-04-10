@@ -84,9 +84,9 @@ if type(None) != type(args.B):
 
 if type(None) != type(args.B):
 	print("Loading previously generated batches from '%s'..." % args.B)
-	batches = km.batch.BatcherThreading.from_files(args.B, args.t)
+	batches = km.batcher.BatcherThreading.from_files(args.B, args.t)
 else:
-	batcher = km.batch.FastaBatcher(size = args.b, threads = args.t)
+	batcher = km.batcher.FastaBatcher(size = args.b, threads = args.t)
 	if args.do_records: batcher.mode = batcher.MODE.RECORDS
 	batcher.doReverseComplement = args.do_reverse
 	batcher.do(args.input, args.k)
@@ -98,7 +98,8 @@ joiner.threads = args.t
 joiner.batch_size = max(2, int(len(batches) / args.t))
 rlimits = resource.getrlimit(resource.RLIMIT_NOFILE)
 joiner.batch_size = min(joiner.batch_size, rlimits[1])
-resource.setrlimit(resource.RLIMIT_NOFILE, (joiner.batch_size, rlimits[1]))
+resource.setrlimit(resource.RLIMIT_NOFILE,
+	(max(rlimits[0], joiner.batch_size), rlimits[1]))
 
 joiner.join(batches, args.output)
 
