@@ -196,7 +196,7 @@ class BatcherThreading(BatcherBase):
 			self._batches.extend(new_collection)
 
 	@staticmethod
-	def from_files(dirPath, threads, t = KMer, isFasta = True):
+	def from_files(dirPath, threads, t = KMer, isFasta = True, reSort = False):
 		"""Load batches from file.
 		
 		Each file in the provided directory should be a written Batch.
@@ -220,7 +220,7 @@ class BatcherThreading(BatcherBase):
 		else:
 			return Parallel(n_jobs = threads, verbose = 11)(
 				delayed(Batch.from_file)(
-					os.path.join(dirPath, fname), t, isFasta)
+					os.path.join(dirPath, fname), t, isFasta, reSort = reSort)
 				for fname in os.listdir(dirPath))
 
 class FastaBatcher(BatcherThreading):

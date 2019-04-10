@@ -194,13 +194,15 @@ class Batch(object):
 			                (default: {False})
 		"""
 		if not self.is_written or force:
+			output = "".join(self.to_write(f, doSort))
 			with open(self.tmp, "w+") as TH:
-				TH.write("".join(self.to_write(f, doSort)))
+				TH.write(output)
 			self.__records = None
 			self._written = True
 
 	@staticmethod
-	def from_file(path, t = KMer, isFasta = True, smart = False):
+	def from_file(path, t = KMer, isFasta = True,
+		smart = False, reSort = False):
 		"""Generate a Batch from a file.
 		
 		Used to link an existing file to a Batch.
@@ -213,6 +215,7 @@ class Batch(object):
 			isFasta {bool} -- whether the input is a fasta (default: {False})
 			smart {bool} -- use smarter IO (open only when needed) parser when
 			                available. Might cause higher overhead.
+			reSort {bool} -- sort the written batch. (default: {False})
 		"""
 
 		if isFasta:
@@ -234,6 +237,9 @@ class Batch(object):
 		batch._i = size
 		batch._remaining = 0
 		batch._written = True
+
+		if reSort:
+			batch.write(doSort = True, force = True)
 
 		FH.close()
 		return batch
