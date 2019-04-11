@@ -460,8 +460,8 @@ class SeqCountBatcher(BatcherThreading):
 		crawling.doSmart = True
 		crawling.verbose = False
 
-		batch = BatchAppendable(recordType, tmpDir, 
-			crawling.count_records(recordBatchList))
+		batch_size = max(crawling.count_records(recordBatchList), 1)
+		batch = BatchAppendable(recordType, tmpDir, batch_size)
 		batch.isFasta = False
 		batch.suffix = ".txt"
 		batch.add_all((SequenceCount(seq, headers)

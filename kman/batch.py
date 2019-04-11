@@ -318,8 +318,9 @@ class BatchAppendable(Batch):
 		Yields:
 			record
 		"""
-		for record in self._record_gen_from_file(smart):
-			yield record
+		if 0 != self.current_size:
+			for record in self._record_gen_from_file(smart):
+				yield record
 
 	def add(self, record, f = "as_fasta"):
 		"""Add a record to the current batch.

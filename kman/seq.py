@@ -206,8 +206,10 @@ class Sequence(om.Sequence):
 			k {int} -- length of substrings for kmerator
 			batchSize {int} -- number of kmers per batch
 		"""
-		for i in range(0, len(seq)-k+1, batchSize):
-			yield (seq[max(i, i-k+1):min(len(seq)-k+1, i+batchSize)], i)
+		for i in range(0, len(seq), batchSize):
+			start = max(0, i-k+1)
+			end = min(len(seq), start+batchSize)
+			yield (seq[start:end], i)
 
 	@staticmethod
 	def kmerator_batched(seq, k, t, batchSize = 1, prefix = "ref", rc = False):
