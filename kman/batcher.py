@@ -186,7 +186,7 @@ class BatcherThreading(BatcherBase):
 		if mode == self.FEED_MODE.REPLACE:
 			self._batches = new_collection
 		elif mode == self.FEED_MODE.FLOW:
-			for bi in tqdm(range(len(new_collection)), desc = "flowing"):
+			for bi in tqdm(range(len(new_collection)), desc = "Flowing"):
 				batch = new_collection.pop()
 				for record in batch.record_gen():
 					self.add_record(record)
@@ -285,7 +285,8 @@ class FastaBatcher(BatcherThreading):
 		batcher = FastaRecordBatcher.from_parent(self)
 		for record in SmartFastaParser(FH).parse():
 			batcher.do(record, k)
-			self.feed_collection(batcher.collection, feedMode)
+		self.feed_collection(batcher.collection, feedMode)
+		self.write_all(doSort = True)
 
 	def __do_over_records(self, FH, k,
 		feedMode = BatcherThreading.FEED_MODE.APPEND):
@@ -321,7 +322,7 @@ class FastaBatcher(BatcherThreading):
 
 		self.feed_collection(list(itertools.chain(
 			*batchCollections)), feedMode)
-		self.write_all()
+		self.write_all(doSort = True)
 
 	def do(self, fasta, k, feedMode = BatcherThreading.FEED_MODE.APPEND):
 		"""Start batching the fasta file.
@@ -394,7 +395,6 @@ class FastaRecordBatcher(BatcherThreading):
 		"""
 		record_name = record[0].split(" ")[0]
 		if verbose: print("Batching record '%s'..." % record_name)
-
 		if 1 == self.threads:
 			kmerGen = Sequence.kmerator(record[1], k, self.natype, record_name,
 				rc = self.doReverseComplement)
@@ -407,8 +407,8 @@ class FastaRecordBatcher(BatcherThreading):
 				)(delayed(FastaRecordBatcher.build_batch
 					)(seq, record_name, k, self, i)
 					for (seq, i) in Sequence.batcher(record[1], k, self.size))
-			self.feed_collection(batches, self.FEED_MODE.REPLACE)
-		self.write_all()
+			self.feed_collection(batches, self.FEED_MODE.APPEND)
+			self.write_all()
 
 	@staticmethod
 	def build_batch(seq, name, k, batcher, i = 0):

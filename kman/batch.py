@@ -264,7 +264,7 @@ class Batch(object):
 		
 		Empties current records collection and any written file.
 		"""
-		if os.path.isfile(self.tmp):
+		if self.is_written:
 			os.remove(self.tmp)
 		self._written = False
 		self._i = 0
