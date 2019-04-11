@@ -26,7 +26,12 @@ parser.add_argument('output', type = str, help = '''
 parser.add_argument('-k', type = int, required = True,
 	help = '''Oligonucleotide (substring) length in nucleotides.''')
 
-parser.add_argument('-m', type = str,
+parser.add_argument('-s', type = str,
+	help = '''Choose scanning mode. See description for more details.
+	Default: "%s"''' % km.batcher.FastaBatcher.MODE.KMERS.name,
+	default = km.batcher.FastaBatcher.MODE.KMERS.name,
+	choices = [m.name for m in list(km.batcher.FastaBatcher.MODE)])
+parser.add_argument('-M', type = str,
 	help = '''Choose batching mode. See description for more details.
 	Default: "%s"''' % km.batcher.BatcherThreading.FEED_MODE.APPEND.name,
 	default = km.batcher.BatcherThreading.FEED_MODE.APPEND.name,
@@ -38,10 +43,6 @@ parser.add_argument('-t', type = int, default = 1,
 parser.add_argument('-T', type = str, default = tempfile.gettempdir(),
 	help = '''Temporary folder path. Default: "%s"''' % tempfile.gettempdir())
 
-parser.add_argument('-r', dest = 'do_records',
-	action = 'store_const', const = True, default = False,
-	help = '''Force parallelization over records instead of k-mers. Particularly
-	helpful for fasta files with many "short" records.''')
 parser.add_argument('-R', dest = 'do_reverse', action = 'store_const',
 	const = True, default = False, help = '''Reverse complement sequences.''')
 parser.add_argument('-C', dest = 'do_compress', action = 'store_const',
@@ -65,14 +66,15 @@ if os.path.isdir(args.o):
 if not os.path.isdir(args.T): os.makedirs(args.T, exist_ok = True)
 tempfile.tempdir = args.T
 
-args.m = km.batcher.BatcherThreading.FEED_MODE[args.m]
+args.M = km.batcher.BatcherThreading.FEED_MODE[args.M]
+args.s = km.batcher.FastaBatcher.MODE[args.s]
 
 # RUN ==========================================================================
 
 batcher = km.batcher.FastaBatcher(size = args.b, threads = args.t)
-if args.do_records: batcher.mode = batcher.MODE.RECORDS
+batcher.mode = args.s
 batcher.doReverseComplement = args.do_reverse
-batcher.do(args.input, args.k, args.m)
+batcher.do(args.input, args.k, args.M)
 os.makedirs(args.o, exist_ok = True)
 
 try:

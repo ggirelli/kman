@@ -39,11 +39,21 @@ parser.add_argument('output', type = str, help = '''
 parser.add_argument('-k', type = int, required = True,
 	help = '''Oligonucleotide (substring) length in nucleotides.''')
 
+parser.add_argument('-s', type = str,
+	help = '''Choose scanning mode. See description for more details.
+	Default: "%s"''' % km.batcher.FastaBatcher.MODE.KMERS.name,
+	default = km.batcher.FastaBatcher.MODE.KMERS.name,
+	choices = [m.name for m in list(km.batcher.FastaBatcher.MODE)])
 parser.add_argument('-m', type = str,
 	help = '''Choose counting mode. See description for more details.
 	Default: "%s"''' % km.join.KJoiner.MODE.SEQ_COUNT.name,
 	default = km.join.KJoiner.MODE.SEQ_COUNT.name,
 	choices = [m.name for m in list(km.join.KJoiner.MODE) if "COUNT" in m.name])
+parser.add_argument('-M', type = str,
+	help = '''Choose batching mode. See description for more details.
+	Default: "%s"''' % km.batcher.BatcherThreading.FEED_MODE.APPEND.name,
+	default = km.batcher.BatcherThreading.FEED_MODE.APPEND.name,
+	choices = [m.name for m in list(km.batcher.BatcherThreading.FEED_MODE)])
 parser.add_argument('-b', type = int, default = 1e6,
 	help = '''Number of kmers per batch. Default: 1e6''')
 parser.add_argument('-t', type = int, default = 1,
@@ -53,10 +63,6 @@ parser.add_argument('-T', type = str, default = tempfile.gettempdir(),
 parser.add_argument('-B', type = str, help = '''Path to folder with previously
 	generated batches. Useful to skip the batching step.''')
 
-parser.add_argument('-r', dest = 'do_records',
-	action = 'store_const', const = True, default = False,
-	help = '''Force parallelization over records instead of k-mers. Particularly
-	helpful for fasta files with many "short" records.''')
 parser.add_argument('-R', dest = 'do_reverse', action = 'store_const',
 	const = True, default = False, help = '''Reverse complement sequences.''')
 
@@ -77,6 +83,8 @@ if not os.path.isdir(args.T): os.makedirs(args.T, exist_ok = True)
 tempfile.tempdir = args.T
 
 args.m = km.join.KJoiner.MODE[args.m]
+args.M = km.batcher.BatcherThreading.FEED_MODE[args.M]
+args.s = km.batcher.FastaBatcher.MODE[args.s]
 
 if type(None) != type(args.B):
 	assert_msg = "batching output folder not found: '%s'" % args.B
@@ -92,9 +100,9 @@ if type(None) != type(args.B):
 		reSort = args.do_resort)
 else:
 	batcher = km.batcher.FastaBatcher(size = args.b, threads = args.t)
-	if args.do_records: batcher.mode = batcher.MODE.RECORDS
+	batcher.mode = args.s
 	batcher.doReverseComplement = args.do_reverse
-	batcher.do(args.input, args.k)
+	batcher.do(args.input, args.k, args.M)
 	batches = batcher.collection
 
 joiner = km.join.KJoinerThreading(args.m)

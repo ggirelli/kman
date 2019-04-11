@@ -115,10 +115,9 @@ class BatcherBase(object):
 			           representation (default: {"as_fasta"})
 			doSort {bool} -- whether to sort when writing (default: {False})
 		"""
-		for batch in self.collection:
-			if not batch.is_written:
-				if 0 != batch.current_size:
-					batch.write(f, doSort)
+		for bi in range(len(self.collection)):
+			if 0 != self.collection[bi].current_size:
+				self.collection[bi].write(f, doSort)
 
 class BatcherThreading(BatcherBase):
 	"""Parallelized batching system.
@@ -286,8 +285,7 @@ class FastaBatcher(BatcherThreading):
 		batcher = FastaRecordBatcher.from_parent(self)
 		for record in SmartFastaParser(FH).parse():
 			batcher.do(record, k)
-			if 1 != self.threads:
-				self.feed_collection(batcher.collection, feedMode)
+			self.feed_collection(batcher.collection, feedMode)
 
 	def __do_over_records(self, FH, k,
 		feedMode = BatcherThreading.FEED_MODE.APPEND):
