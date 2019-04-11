@@ -45,23 +45,28 @@ parser.add_argument('-s', type = str,
 	default = km.batcher.FastaBatcher.MODE.KMERS.name,
 	choices = [m.name for m in list(km.batcher.FastaBatcher.MODE)])
 parser.add_argument('-m', type = str,
-	help = '''Choose counting mode. See description for more details.
-	Default: "%s"''' % km.join.KJoiner.MODE.SEQ_COUNT.name,
-	default = km.join.KJoiner.MODE.SEQ_COUNT.name,
-	choices = [m.name for m in list(km.join.KJoiner.MODE) if "COUNT" in m.name])
-parser.add_argument('-M', type = str,
 	help = '''Choose batching mode. See description for more details.
 	Default: "%s"''' % km.batcher.BatcherThreading.FEED_MODE.APPEND.name,
 	default = km.batcher.BatcherThreading.FEED_MODE.APPEND.name,
 	choices = [m.name for m in list(km.batcher.BatcherThreading.FEED_MODE)])
 parser.add_argument('-b', type = int, default = 1e6,
 	help = '''Number of kmers per batch. Default: 1e6''')
+parser.add_argument('-B', type = str, help = '''Path to folder with previously
+	generated batches. Useful to skip the batching step.''')
+parser.add_argument('-c', type = str,
+	help = '''Choose counting mode. See description for more details.
+	Default: "%s"''' % km.join.KJoiner.MODE.SEQ_COUNT.name,
+	default = km.join.KJoiner.MODE.SEQ_COUNT.name,
+	choices = [m.name for m in list(km.join.KJoiner.MODE) if "COUNT" in m.name])
+parser.add_argument('-M', type = str,
+	help = '''Choose memory mode. See description for more details.
+	Default: "%s"''' % km.join.KJoiner.MEMORY.NORMAL.name,
+	default = km.join.KJoiner.MEMORY.NORMAL.name,
+	choices = [m.name for m in list(km.join.KJoiner.MEMORY)])
 parser.add_argument('-t', type = int, default = 1,
 	help = '''Number of threads for parallelization.''')
 parser.add_argument('-T', type = str, default = tempfile.gettempdir(),
 	help = '''Temporary folder path. Default: "%s"''' % tempfile.gettempdir())
-parser.add_argument('-B', type = str, help = '''Path to folder with previously
-	generated batches. Useful to skip the batching step.''')
 
 parser.add_argument('-R', dest = 'do_reverse', action = 'store_const',
 	const = True, default = False, help = '''Reverse complement sequences.''')
@@ -82,9 +87,10 @@ assert_msg = "path to an existing fasta file expected, file not found: '%s'" % (
 if not os.path.isdir(args.T): os.makedirs(args.T, exist_ok = True)
 tempfile.tempdir = args.T
 
-args.m = km.join.KJoiner.MODE[args.m]
-args.M = km.batcher.BatcherThreading.FEED_MODE[args.M]
 args.s = km.batcher.FastaBatcher.MODE[args.s]
+args.m = km.batcher.BatcherThreading.FEED_MODE[args.m]
+args.c = km.join.KJoiner.MODE[args.c]
+args.M = km.join.KJoiner.MEMORY[args.M]
 
 if type(None) != type(args.B):
 	assert_msg = "batching output folder not found: '%s'" % args.B
@@ -102,10 +108,10 @@ else:
 	batcher = km.batcher.FastaBatcher(size = args.b, threads = args.t)
 	batcher.mode = args.s
 	batcher.doReverseComplement = args.do_reverse
-	batcher.do(args.input, args.k, args.M)
+	batcher.do(args.input, args.k, args.m)
 	batches = batcher.collection
 
-joiner = km.join.KJoinerThreading(args.m)
+joiner = km.join.KJoinerThreading(args.c, args.M)
 joiner.threads = args.t
 
 joiner.batch_size = max(2, int(len(batches) / args.t))

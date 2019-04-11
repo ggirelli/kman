@@ -1,4 +1,3 @@
-
 '''
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
@@ -12,7 +11,7 @@ from heapq import merge
 import io
 from itertools import chain
 from joblib import Parallel, delayed
-from kman.abundance import AbundanceVector
+from kman.abundance import AbundanceVector, AbundanceVectorLocal
 from kman.batch import Batch, BatchAppendable
 from kman.batcher import BatcherThreading
 from kman.seq import SequenceCoords, SequenceCount
@@ -139,12 +138,26 @@ class KJoiner(object):
 		SEQ_COUNT = 2
 		VEC_COUNT = 3
 		VEC_COUNT_MASKED = 4
+	class MEMORY(Enum):
+		"""Modes of memory management.
+		
+		Extends:
+			Enum
+		
+		Variables:
+			NORMAL {number} -- store AbundanceVector in the RAM
+			LOCAL {number} -- store AbundanceVector locally in HDF5 files
+		"""
+		NORMAL = 1
+		LOCAL = 2
 	DEFAULT_MODE = MODE.UNIQUE
+	DEFAULT_MEMORY = MEMORY.NORMAL
 
 	__mode = DEFAULT_MODE
+	__memory = DEFAULT_MEMORY
 	__join_function = None
 
-	def __init__(self, mode = None):
+	def __init__(self, mode = None, memory = None):
 		"""Initialize KJoiner.
 		
 		Keyword Arguments:
@@ -154,6 +167,9 @@ class KJoiner(object):
 		if type(mode) != type(None):
 			assert mode in self.MODE
 			self.__mode = mode
+		if type(memory) != type(None):
+			assert memory in self.MEMORY
+			self.__memory = memory
 		self.__set_join_function()
 
 	@property
@@ -163,6 +179,14 @@ class KJoiner(object):
 	def mode(self, mode):
 		assert mode in self.MODE
 		self.__mode = mode
+		self.__set_join_function()
+	@property
+	def memory(self):
+		return self.__memory
+	@memory.setter
+	def memory(self, memory):
+		assert memory in self.MEMORY
+		self.__memory = memory
 		self.__set_join_function()
 	@property
 	def join_function(self):
@@ -264,7 +288,12 @@ class KJoiner(object):
 		if not self.mode.name.startswith("VEC_"):
 			kwargs['OH'] = open(outpath, "w+")
 		else:
-			kwargs["vector"] = AbundanceVector()
+			if self.memory == self.MEMORY.NORMAL:
+				kwargs["vector"] = AbundanceVector()
+			elif self.memory == self.MEMORY.LOCAL:
+				kwargs["vector"] = AbundanceVectorLocal()
+			else:
+				assert self.memory  in [self.MEMORY.NORMAL, self.MEMORY.LOCAL]
 		return kwargs
 
 	def _post_join(self, **kwargs):
@@ -324,8 +353,8 @@ class KJoinerThreading(KJoiner):
 	__batch_size = 10
 	__doSort = False
 
-	def __init__(self, mode = None):
-		super().__init__(mode)
+	def __init__(self, mode = None, memory = None):
+		super().__init__(mode, memory)
 
 	@property
 	def doSort(self):
