@@ -46,7 +46,7 @@ class SequenceCoords(object):
 		super(SequenceCoords, self).__init__()
 		assert start >= 0
 		assert end >= 0
-		assert strand in self.STRAND
+		assert isinstance(strand, self.STRAND)
 		self._ref = ref
 		self._start = start
 		self._end = end
@@ -65,6 +65,19 @@ class SequenceCoords(object):
 	def strand(self):
 		return self._strand
 	
+	def __eq__(self, other):
+		if not isinstance(other, SequenceCoords):
+			return False
+		if not self.ref == other.ref:
+			return False
+		if not self.start == other.start:
+			return False
+		if not self.end == other.end:
+			return False
+		if not self.strand == other.strand:
+			return False
+		return True
+
 	@staticmethod
 	def rev(strand):
 		"""Provides reverse strand.
@@ -117,7 +130,13 @@ class Sequence(om.Sequence):
 	doReverseComplement = False
 
 	def __init__(self, seq, t, name = None):
+		assert isinstance(t, om.NATYPES), "sequence type must be from om.NATYPES"
 		super().__init__(seq, t, name)
+
+	def __eq__(self, other):
+		if not isinstance(other, Sequence):
+			return False
+		return super().__eq__(other)
 
 	def kmers(self, k):
 		"""Extract k-mers from Sequence.
@@ -206,10 +225,12 @@ class Sequence(om.Sequence):
 			k {int} -- length of substrings for kmerator
 			batchSize {int} -- number of kmers per batch
 		"""
-		for i in range(0, len(seq), batchSize):
-			start = max(0, i-k+1)
+
+		start = 0
+		while start < len(seq)-k+1:
 			end = min(len(seq), start+batchSize)
-			yield (seq[start:end], i)
+			yield (seq[start:end], start)
+			start += batchSize-k+1
 
 	@staticmethod
 	def kmerator_batched(seq, k, t, batchSize = 1, prefix = "ref", rc = False):
@@ -246,6 +267,7 @@ class KMer(Sequence):
 
 	def __init__(self, chrom, start, end, seq,
 		t = om.NATYPES.DNA, strand = SequenceCoords.STRAND.PLUS):
+		assert len(seq) == end - start
 		super().__init__(seq, t)
 		self._coords = SequenceCoords(chrom, start, end, strand)
 
@@ -259,6 +281,13 @@ class KMer(Sequence):
 	@property
 	def seq(self):
 		return self.text
+
+	def __eq__(self, other):
+		if not isinstance(other, KMer):
+			return False
+		if not self.coords == other.coords:
+			return False
+		return super().__eq__(other)
 
 	@staticmethod
 	def from_fasta(record, t = om.NATYPES.DNA):
@@ -276,10 +305,6 @@ class KMer(Sequence):
 		coords = SequenceCoords.from_str(record[0])
 		return KMer(coords.ref, coords.start, coords.end,
 			record[1], t, strand = coords.strand)
-	
-	@staticmethod
-	def from_file(*args, **kwargs):
-		return KMer.from_fasta(*args, **kwargs)
 
 	def as_fasta(self):
 		"""Fasta-like representation."""
@@ -318,6 +343,7 @@ class SequenceCount(Sequence):
 
 	def __init__(self, seq, headers, t = om.NATYPES.DNA):
 		super().__init__(seq, t)
+		assert all([isinstance(h, str) for h in headers])
 		self.__headers = headers
 
 	@property
@@ -342,10 +368,6 @@ class SequenceCount(Sequence):
 		"""
 		seq, headers = line.strip().split("\t")
 		return SequenceCount(seq, headers.split(" "), t)
-
-	@staticmethod
-	def from_file(*args, **kwargs):
-		return SequenceCount.from_text(*args, **kwargs)
 
 	def __repr__(self):
 		return "%s\t%s" % (self.seq, " ".join(self.header))
