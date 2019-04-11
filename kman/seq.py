@@ -2,7 +2,7 @@
 '''
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-@description: methods for sequence manipulation
+@description: sequence management systems
 '''
 
 from enum import Enum, unique
@@ -306,6 +306,10 @@ class KMer(Sequence):
 		return KMer(coords.ref, coords.start, coords.end,
 			record[1], t, strand = coords.strand)
 
+	@staticmethod
+	def from_file(*args, **kwargs):
+		return KMer.from_fasta(*args, **kwargs)
+
 	def as_fasta(self):
 		"""Fasta-like representation."""
 		return ">%s\n%s\n" % (self.header, self.seq)
@@ -368,6 +372,10 @@ class SequenceCount(Sequence):
 		"""
 		seq, headers = line.strip().split("\t")
 		return SequenceCount(seq, headers.split(" "), t)
+
+	@staticmethod
+	def from_file(*args, **kwargs):
+		return SequenceCount.from_text(*args, **kwargs)
 
 	def __repr__(self):
 		return "%s\t%s" % (self.seq, " ".join(self.header))

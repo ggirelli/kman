@@ -2,7 +2,7 @@
 '''
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-@description: methods for batching
+@description: batch systems
 '''
 
 from Bio.SeqIO.FastaIO import SimpleFastaParser
@@ -67,6 +67,10 @@ class Batch(object):
 	def remaining(self):
 		return self._remaining
 	@property
+	def collection(self):
+		if isinstance(self.__records, type(None)): return None
+		return self.__records.copy()
+	@property
 	def type(self):
 		return self.__type
 	@property
@@ -86,8 +90,7 @@ class Batch(object):
 		info += "\nwritten: %r\n" % self.is_written
 		return info
 
-	@property
-	def sorted(self, smart = False, keyAttr = "seq"):
+	def sorted(self, smart = False, keyAttr = "seq", f = "from_file"):
 		"""Generator of sorted records.
 		
 		Keyword Arguments:
@@ -96,10 +99,10 @@ class Batch(object):
 		Returns:
 			generator
 		"""
-		return sorted(self.record_gen(smart),
+		return sorted(self.record_gen(smart, f = f),
 			key = lambda x: getattr(x, keyAttr))
 
-	def _record_gen_from_file(self, smart = False):
+	def _record_gen_from_file(self, smart = False, f = "from_file"):
 		"""Generator of records, reading from file.
 		
 		Yields:
@@ -112,24 +115,24 @@ class Batch(object):
 		if self.isFasta:
 			if smart:
 				for record in SmartFastaParser(TH).parse():
-					yield self.__type.from_file(record)
+					yield getattr(self.__type, f)(record)
 			else:
 				for record in SimpleFastaParser(TH):
-					yield self.__type.from_file(record)
+					yield getattr(self.__type, f)(record)
 		else:
 			for line in TH:
-				yield self.__type.from_file(line)
+				yield getattr(self.__type, f)(line)
 		if not TH.closed:
 			TH.close()
 
-	def record_gen(self, smart = False):
+	def record_gen(self, smart = False, f = "from_file"):
 		"""Generator of records.
 		
 		Yields:
 			record
 		"""
 		if self.is_written:
-			for record in self._record_gen_from_file(smart):
+			for record in self._record_gen_from_file(smart, f):
 				yield record
 		else:
 			for record in self.__records:
@@ -194,7 +197,9 @@ class Batch(object):
 			                (default: {False})
 		"""
 		if not self.is_written or force:
-			output = "".join(self.to_write(f, doSort))
+			output = self.to_write(f, doSort)
+			output = [x+"\n" if not x.endswith("\n") else x for x in output]
+			output = "".join(output)
 			with open(self.tmp, "w+") as TH:
 				TH.write(output)
 			self.__records = None
@@ -237,6 +242,7 @@ class Batch(object):
 		batch._i = size
 		batch._remaining = 0
 		batch._written = True
+		batch.isFasta = isFasta
 
 		if reSort:
 			batch.write(doSort = True, force = True)
@@ -275,14 +281,14 @@ class Batch(object):
 		"""Whether the Batch collection is full."""
 		return 0 == self.remaining
 
-	def unwrite(self):
+	def unwrite(self, f = "from_file"):
 		"""Unwrites the batch from storage.
 		
 		Reads records from stored file to memory, if the batch is not full.
 		"""
 		if not self.is_full() and self.is_written:
 			self.__records = [None]*self.size
-			self.__records[:self.current_size] = list(self.record_gen())
+			self.__records[:self.current_size] = list(self.record_gen(f = f))
 			self._written = False
 			os.remove(self.tmp)
 
