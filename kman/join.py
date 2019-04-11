@@ -12,6 +12,7 @@ from heapq import merge
 import io
 from itertools import chain
 from joblib import Parallel, delayed
+from kman.abundance import AbundanceVector
 from kman.batch import Batch, BatchAppendable
 from kman.batcher import BatcherThreading
 from kman.seq import SequenceCoords, SequenceCount
@@ -303,6 +304,88 @@ class KJoiner(object):
 
 		self._post_join(**kwargs)
 
+class KJoinerThreading(KJoiner):
+	"""Parallelized K-joining system.
+	
+	Extends KJoiner class for parallelization.
+	
+	Extends:
+		KJoiner
+	
+	Variables:
+		_tmp {tempfile.TemporaryDirectory}
+		_threads {number} -- number of threads for parallelization
+		__batch_size {number} -- number of batches to join per thread
+		__doSort {bool} -- whether to sort while joining
+	"""
+
+	_tmp = None
+	_threads = 1
+	__batch_size = 10
+	__doSort = False
+
+	def __init__(self, mode = None):
+		super().__init__(mode)
+
+	@property
+	def doSort(self):
+		return self.__doSort
+	@doSort.setter
+	def doSort(self, doSort):
+		assert type(True) == type(doSort)
+		self.__doSort = doSort
+	@property
+	def threads(self):
+		return self._threads
+	@threads.setter
+	def threads(self, t):
+		self._threads = check_threads(t)
+	@property
+	def batch_size(self):
+		return self.__batch_size
+	@batch_size.setter
+	def batch_size(self, batch_size):
+		assert type(0) == type(batch_size)
+		assert batch_size >= 2
+		self.__batch_size = batch_size
+	@property
+	def tmp(self):
+		if type(None) == type(self._tmp):
+			self._tmp = tempfile.TemporaryDirectory(prefix = "kmanJoin")
+		return self._tmp
+
+	def __parallel_join(self, recordBatches, outpath):
+		"""Joins sequenceCount batches in paralle.
+		
+		Arguments:
+			recordBatches {list} -- list of Batches
+			outpath {str} -- path to output
+		"""
+		kwargs = self._pre_join(outpath)
+
+		batcher = SeqCountBatcher.from_parent(self, self.batch_size)
+		batcher.doSort = self.doSort
+		print("Intermediate batching...")
+		batcher.do(recordBatches)
+		print("Joining...")
+		batcher.join(self.join_function, **kwargs)
+
+		self._post_join(**kwargs)
+
+	def join(self, batches, outpath):
+		"""Join batches.
+		
+		Perform k-joining of batches.
+		
+		Arguments:
+			batches {list} -- list of Batch instances
+			outpath {str} -- path to output file
+		"""
+		if 1 == self.threads:
+			super().join(batches, outpath, self.doSort)
+		else:
+			self.__parallel_join(batches, outpath)
+
 class SeqCountBatcher(BatcherThreading):
 	"""SequenceCount batchin system.
 	
@@ -406,172 +489,3 @@ class SeqCountBatcher(BatcherThreading):
 	def from_parent(parent, n_batches):
 		assert KJoinerThreading == type(parent)
 		return SeqCountBatcher(n_batches, parent.threads, tmp = parent.tmp)
-
-class KJoinerThreading(KJoiner):
-	"""Parallelized K-joining system.
-	
-	Extends KJoiner class for parallelization.
-	
-	Extends:
-		KJoiner
-	
-	Variables:
-		_tmp {tempfile.TemporaryDirectory}
-		_threads {number} -- number of threads for parallelization
-		__batch_size {number} -- number of batches to join per thread
-		__doSort {bool} -- whether to sort while joining
-	"""
-
-	_tmp = None
-	_threads = 1
-	__batch_size = 10
-	__doSort = False
-
-	def __init__(self, mode = None):
-		super().__init__(mode)
-
-	@property
-	def doSort(self):
-		return self.__doSort
-	@doSort.setter
-	def doSort(self, doSort):
-		assert type(True) == type(doSort)
-		self.__doSort = doSort
-	@property
-	def threads(self):
-		return self._threads
-	@threads.setter
-	def threads(self, t):
-		self._threads = check_threads(t)
-	@property
-	def batch_size(self):
-		return self.__batch_size
-	@batch_size.setter
-	def batch_size(self, batch_size):
-		assert type(0) == type(batch_size)
-		assert batch_size >= 2
-		self.__batch_size = batch_size
-	@property
-	def tmp(self):
-		if type(None) == type(self._tmp):
-			self._tmp = tempfile.TemporaryDirectory(prefix = "kmanJoin")
-		return self._tmp
-
-	def __parallel_join(self, recordBatches, outpath):
-		"""Joins sequenceCount batches in paralle.
-		
-		Arguments:
-			recordBatches {list} -- list of Batches
-			outpath {str} -- path to output
-		"""
-		kwargs = self._pre_join(outpath)
-
-		batcher = SeqCountBatcher.from_parent(self, self.batch_size)
-		batcher.doSort = self.doSort
-		print("Intermediate batching...")
-		batcher.do(recordBatches)
-		print("Joining...")
-		batcher.join(self.join_function, **kwargs)
-
-		self._post_join(**kwargs)
-
-	def join(self, batches, outpath):
-		"""Join batches.
-		
-		Perform k-joining of batches.
-		
-		Arguments:
-			batches {list} -- list of Batch instances
-			outpath {str} -- path to output file
-		"""
-		if 1 == self.threads:
-			super().join(batches, outpath, self.doSort)
-		else:
-			self.__parallel_join(batches, outpath)
-
-class AbundanceVector(object):
-	"""AbundanceVector system.
-	
-	For each records, for each strand, generates a 1-dimensional array with
-	abundance counts.
-	
-	Variables:
-		__data {dict} -- stores abundance vectores
-		__ks {set} -- sequence lengths
-	"""
-
-	"""{ref:{strand:np.1darray}}"""
-	__data = {}
-	__ks = set()
-
-	def __init__(self):
-		super().__init__()
-
-	@property
-	def data(self):
-		return self.__data
-
-	def add_count(self, ref, strand, pos, count, k, replace = False):
-		"""Add occurrence count to the vector.
-		
-		Arguments:
-			ref {str} -- reference record name
-			strand {str} -- strand type
-			pos {int} -- position on ref:strand
-			count {int} -- occurrence count
-			k {int} -- sequence length
-		
-		Keyword Arguments:
-			replace {bool} -- whether to allow for replacement of non-zero
-							  counts (default: {False})
-		"""
-		self.__ks.add(k)
-		assert_msg = "inconsistent sequence lengths: %s" % self.__ks
-		assert 1 == len(self.__ks), assert_msg
-
-		self.add_ref(ref, strand, pos + 1)
-		if not replace:
-			assert_msg = "cannot update a non-zero count without replace."
-			assert_msg += " (%s, %s, %d, %d)" % (ref, strand, pos, count)
-			assert self.__data[ref][strand][pos] == 0, assert_msg
-		self.__data[ref][strand][pos] = count
-
-	def add_ref(self, ref, strand, size):
-		"""Add/resize reference:strand vector.
-		
-		Adds a new reference:strand vector of given size  if absent, or resizes
-		the current one is size is greater than the current one.
-		
-		Arguments:
-			ref {str} -- reference record name
-			strand {str} -- strand type
-			size {int} -- new size
-		"""
-		if not ref in self.__data.keys():
-			self.__data[ref] = {}
-		if not strand in self.__data[ref].keys():
-			self.__data[ref][strand] = np.zeros(size)
-		elif size > self.__data[ref][strand].shape[0]:
-			self.__data[ref][strand].resize(size)
-
-	def write_to(self, dirpath):
-		"""Write AbundanceVectors to a folder.
-
-		The extension is removed from dirpath before proceeding.
-		
-		Arguments:
-			dirpath {str} -- path to output directory.
-		"""
-
-		dirpath = os.path.splitext(dirpath)[0]
-		assert not os.path.isfile(dirpath)
-		print('Writing output in "%s"' % dirpath)
-		os.makedirs(dirpath, exist_ok = True)
-		for ref in self.__data.keys():
-			for strand in self.__data[ref].keys():
-				fname = "%s___%s.gz" % (ref, strand)
-				OH = gzip.open(os.path.join(dirpath, fname), "wb")
-				OH.write(b"# k=%d\n" % list(self.__ks)[0])
-				for count in tqdm(self.__data[ref][strand], desc = fname):
-					OH.write(b"%d\n" % count)
-				OH.close()
