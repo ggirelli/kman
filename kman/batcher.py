@@ -285,6 +285,8 @@ class FastaBatcher(BatcherThreading):
 		batcher = FastaRecordBatcher.from_parent(self)
 		for record in SmartFastaParser(FH).parse():
 			batcher.do(record, k)
+			for batch in batcher.collection:
+				batch.unwrite()
 		self.feed_collection(batcher.collection, feedMode)
 		self.write_all(doSort = True)
 
@@ -408,7 +410,7 @@ class FastaRecordBatcher(BatcherThreading):
 					)(seq, record_name, k, self, i)
 					for (seq, i) in Sequence.batcher(record[1], k, self.size))
 			self.feed_collection(batches, self.FEED_MODE.APPEND)
-			self.write_all()
+		self.write_all()
 
 	@staticmethod
 	def build_batch(seq, name, k, batcher, i = 0):

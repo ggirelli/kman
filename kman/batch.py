@@ -275,6 +275,17 @@ class Batch(object):
 		"""Whether the Batch collection is full."""
 		return 0 == self.remaining
 
+	def unwrite(self):
+		"""Unwrites the batch from storage.
+		
+		Reads records from stored file to memory, if the batch is not full.
+		"""
+		if not self.is_full() and self.is_written:
+			self.__records = [None]*self.size
+			self.__records[:self.current_size] = list(self.record_gen())
+			self._written = False
+			os.remove(self.tmp)
+
 class BatchAppendable(Batch):
 	"""Batch container.
 	
