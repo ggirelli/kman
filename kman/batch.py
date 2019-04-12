@@ -21,6 +21,10 @@ class Batch(object):
 	cannot be resized. After full size is reached, a new Batch should be created
 	
 	Variables:
+		_fread {str} -- name of type method to read a record
+		_fwrite {str} -- name of type method to convert a record to string
+		_keyAttr {str} -- name of type attribute to extract that provides the
+		                  key for sorting
 		_written {bool} -- if the batch was written to file
 		_i {number} -- current record location
 		_tmp_dir {tempfile.TemporaryDirectory}
@@ -29,6 +33,10 @@ class Batch(object):
 		suffix {str} -- extension for the output temporary file
 	"""
 	
+	_fread = "from_file"
+	_fwrite = "as_fasta"
+	_keyAttr = "seq"
+
 	_written = False
 	_i = 0
 	_tmp_dir = None
@@ -90,21 +98,52 @@ class Batch(object):
 		info += "\nwritten: %r\n" % self.is_written
 		return info
 
-	def sorted(self, smart = False, keyAttr = "seq", f = "from_file"):
+	@property
+	def keyAttr(self):
+		return self._keyAttr
+	@keyAttr.setter
+	def keyAttr(self, k):
+		assert isinstance(k, str)
+		assert hasattr(self.type, k)
+		self._keyAttr = k
+	@property
+	def fread(self):
+		return self._fread
+	@fread.setter
+	def fread(self, f):
+		assert isinstance(f, str)
+		assert hasattr(self.type, f)
+		self._fread = f
+	@property
+	def fwrite(self):
+		return self._fwrite
+	@fwrite.setter
+	def fwrite(self, f):
+		assert isinstance(f, str)
+		assert hasattr(self.type, f)
+		self._fwrite = f
+
+	def sorted(self, smart = False):
 		"""Generator of sorted records.
 		
 		Keyword Arguments:
 			keyAttr {str} -- attribute key for sorting (default: {"seq"})
+			smart {bool} -- use smarter IO (open only when needed) parser when
+			                available. Might cause higher overhead.
 		
 		Returns:
 			generator
 		"""
-		return sorted(self.record_gen(smart, f = f),
-			key = lambda x: getattr(x, keyAttr))
+		return sorted(self.record_gen(smart),
+			key = lambda x: getattr(x, self.keyAttr))
 
-	def _record_gen_from_file(self, smart = False, f = "from_file"):
+	def _record_gen_from_file(self, smart = False):
 		"""Generator of records, reading from file.
 		
+		Keyword Arguments:
+			smart {bool} -- use smarter IO (open only when needed) parser when
+			                available. Might cause higher overhead.
+
 		Yields:
 			record
 		"""
@@ -115,24 +154,28 @@ class Batch(object):
 		if self.isFasta:
 			if smart:
 				for record in SmartFastaParser(TH).parse():
-					yield getattr(self.__type, f)(record)
+					yield getattr(record, self.fread)()
 			else:
 				for record in SimpleFastaParser(TH):
-					yield getattr(self.__type, f)(record)
+					yield getattr(record, self.fread)()
 		else:
 			for line in TH:
-				yield getattr(self.__type, f)(line)
+				yield getattr(line, self.fread)()
 		if not TH.closed:
 			TH.close()
 
-	def record_gen(self, smart = False, f = "from_file"):
+	def record_gen(self, smart = False):
 		"""Generator of records.
 		
+		Keyword Arguments:
+			smart {bool} -- use smarter IO (open only when needed) parser when
+			                available. Might cause higher overhead.
+
 		Yields:
 			record
 		"""
 		if self.is_written:
-			for record in self._record_gen_from_file(smart, f):
+			for record in self._record_gen_from_file(smart):
 				yield record
 		else:
 			for record in self.__records:
@@ -170,34 +213,32 @@ class Batch(object):
 		for record in recordGen:
 			self.add(record)
 
-	def to_write(self, f = "as_fasta", doSort = False):
+	def to_write(self, doSort = False):
 		"""Generator of writeable records.
 		
 		Generator function that converts batch records into writeable ones.
 		
 		Keyword Arguments:
-			f {str} -- name of record in-built function for writeable format]
-			           (default: {"as_fasta"})
+			doSort {bool} -- whether to sort when writing (default: {False})
 		"""
 		if doSort:
-			return (getattr(r, f)() for r in self.sorted
+			return (getattr(r, self.fwrite)()
+				for r in self.sorted()
 				if not type(None) == type(r))
 		else:
-			return (getattr(r, f)() for r in self.record_gen()
+			return (getattr(r, self.fwrite)() for r in self.record_gen()
 				if not type(None) == type(r))
 
-	def write(self, f = "as_fasta", doSort = False, force = False):
+	def write(self, doSort = False, force = False):
 		"""Writes the batch to file.
 		
 		Keyword Arguments:
-			f {str} -- name of method in records class for string-like
-			           representation (default: {"as_fasta"})
 			doSort {bool} -- whether to sort when writing (default: {False})
 			force {bool} -- force overwriting, useful with doSort.
 			                (default: {False})
 		"""
 		if not self.is_written or force:
-			output = self.to_write(f, doSort)
+			output = self.to_write(doSort)
 			output = [x+"\n" if not x.endswith("\n") else x for x in output]
 			output = "".join(output)
 			with open(self.tmp, "w+") as TH:
@@ -281,14 +322,14 @@ class Batch(object):
 		"""Whether the Batch collection is full."""
 		return 0 == self.remaining
 
-	def unwrite(self, f = "from_file"):
+	def unwrite(self):
 		"""Unwrites the batch from storage.
 		
 		Reads records from stored file to memory, if the batch is not full.
 		"""
 		if not self.is_full() and self.is_written:
 			self.__records = [None]*self.size
-			self.__records[:self.current_size] = list(self.record_gen(f = f))
+			self.__records[:self.current_size] = list(self.record_gen())
 			self._written = False
 			os.remove(self.tmp)
 
@@ -298,14 +339,6 @@ class BatchAppendable(Batch):
 	Records in the Batch are accessible through the record_gen and sorted
 	methods, which source either from memory or from written files. A Batch
 	cannot be resized. After full size is reached, a new Batch should be created
-	
-	Variables:
-		_written {bool} -- if the batch was written to file
-		_i {number} -- current record location
-		_tmp_dir {tempfile.TemporaryDirectory}
-		_tmp {tempfile.TemporaryFile}
-		isFasta {bool} -- whether the output should be in fasta format
-		suffix {str} -- extension for the output temporary file
 	"""
 	
 	def __init__(self, t, tmpDir, size = 1):
@@ -332,6 +365,10 @@ class BatchAppendable(Batch):
 	def record_gen(self, smart = False):
 		"""Generator of records.
 		
+		Keyword Arguments:
+			smart {bool} -- use smarter IO (open only when needed) parser when
+			                available. Might cause higher overhead.
+
 		Yields:
 			record
 		"""
@@ -339,7 +376,7 @@ class BatchAppendable(Batch):
 			for record in self._record_gen_from_file(smart):
 				yield record
 
-	def add(self, record, f = "as_fasta"):
+	def add(self, record):
 		"""Add a record to the current batch.
 		
 		Does not work if the batch is full. Also, the record type must match the
@@ -348,39 +385,37 @@ class BatchAppendable(Batch):
 		
 		Arguments:
 			record -- record of the same type as self.type
-			f {str} -- name of method in records class for string-like
-			           representation (default: {"as_fasta"})
 		"""
 		assert not self.is_full(), "this batch is full."
 		super().check_record(record)
 		with open(self.tmp, "a+") as OH:
-			OH.write(getattr(record, f)())
+			output = getattr(record, self.fread)()
+			if not output.endswith("\n"): output += "\n"
+			OH.write(output)
 		self._i += 1
 		self._remaining -= 1
 
-	def add_all(self, recordGen, f = "as_fasta"):
+	def add_all(self, recordGen):
 		"""Adds all records from a generator to the current Batch.
 		
 		Arguments:
 			recordGen {generator} -- record generator
-			f {str} -- name of method in records class for string-like
-			           representation (default: {"as_fasta"})
 		"""
 		for record in recordGen:
-			self.add(record, f)
+			self.add(record)
 
-	def write(self, f = "as_fasta", doSort = False):
+	def write(self, doSort = False):
 		"""Writes the batch to file.
 
 		Does something only if doSort is True.
 		
 		Keyword Arguments:
-			f {str} -- name of method in records class for string-like
-			           representation (default: {"as_fasta"})
 			doSort {bool} -- whether to sort when writing (default: {False})
 		"""
 		if doSort:
-			output = "".join(self.to_write(f, doSort))
+			output = self.to_write(doSort)
+			output = [x+"\n" if not x.endswith("\n") else x for x in output]
+			output = "".join(output)
 			with open(self.tmp, "w+") as TH:
 				TH.write(output)
 
@@ -446,3 +481,7 @@ class BatchAppendable(Batch):
 		os.remove(self.tmp)
 		self._i = 0
 		self._remaining = self.size
+
+
+	def unwrite(self, *args, **kwargs):
+		pass
