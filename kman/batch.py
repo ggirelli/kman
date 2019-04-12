@@ -154,13 +154,13 @@ class Batch(object):
 		if self.isFasta:
 			if smart:
 				for record in SmartFastaParser(TH).parse():
-					yield getattr(record, self.fread)()
+					yield getattr(self.__type, self.fread)(record)
 			else:
 				for record in SimpleFastaParser(TH):
-					yield getattr(record, self.fread)()
+					yield getattr(self.__type, self.fread)(record)
 		else:
 			for line in TH:
-				yield getattr(line, self.fread)()
+				yield getattr(self.__type, self.fread)(line)
 		if not TH.closed:
 			TH.close()
 
