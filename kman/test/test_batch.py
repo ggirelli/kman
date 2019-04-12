@@ -150,4 +150,3 @@ def test_BatchAppendable():
 	assert 5 == b.remaining
 	assert b.is_written
 	assert not os.path.isfile(b.tmp)
-
