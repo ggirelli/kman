@@ -107,7 +107,7 @@ class BatcherBase(object):
 		self.new_batch() # Add new batch if needed
 		self.collection[-1].add(record)
 
-	def write_all(self, f = "as_fasta", doSort = False):
+	def write_all(self, f = "as_fasta", doSort = False, verbose = False):
 		"""Write all batches to file.
 		
 		Keyword Arguments:
@@ -115,7 +115,11 @@ class BatcherBase(object):
 			           representation (default: {"as_fasta"})
 			doSort {bool} -- whether to sort when writing (default: {False})
 		"""
-		for bi in range(len(self.collection)):
+		biList = range(len(self.collection))
+		description = "Writing"
+		if doSort: description += "&Sorting"
+		if verbose: biList = tqdm(biList, desc = description)
+		for bi in biList:
 			if 0 != self.collection[bi].current_size:
 				self.collection[bi].write(f, doSort)
 
@@ -324,7 +328,7 @@ class FastaBatcher(BatcherThreading):
 
 		self.feed_collection(list(itertools.chain(
 			*batchCollections)), feedMode)
-		self.write_all(doSort = True)
+		self.write_all(doSort = True, verbose = True)
 
 	def do(self, fasta, k, feedMode = BatcherThreading.FEED_MODE.APPEND):
 		"""Start batching the fasta file.
