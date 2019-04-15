@@ -389,7 +389,7 @@ class BatchAppendable(Batch):
 		assert not self.is_full(), "this batch is full."
 		super().check_record(record)
 		with open(self.tmp, "a+") as OH:
-			output = getattr(record, self.fread)()
+			output = getattr(record, self.fwrite)()
 			if not output.endswith("\n"): output += "\n"
 			OH.write(output)
 		self._i += 1
@@ -481,7 +481,6 @@ class BatchAppendable(Batch):
 		os.remove(self.tmp)
 		self._i = 0
 		self._remaining = self.size
-
 
 	def unwrite(self, *args, **kwargs):
 		pass

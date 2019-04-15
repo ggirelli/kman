@@ -493,10 +493,10 @@ class SeqCountBatcher(BatcherThreading):
 		batch = BatchAppendable(recordType, tmpDir, batch_size)
 		batch.isFasta = False
 		batch.suffix = ".txt"
+		batch.fwrite = "as_text"
 		batch.add_all((SequenceCount(seq, headers)
-			for (headers, seq) in crawling.do_batch(recordBatchList)),
-			f = "as_text")
-		batch.write(f = "as_text")
+			for (headers, seq) in crawling.do_batch(recordBatchList)))
+		batch.write()
 
 		return batch
 
