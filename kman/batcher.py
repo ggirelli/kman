@@ -292,7 +292,7 @@ class FastaBatcher(BatcherThreading):
 			for batch in batcher.collection:
 				batch.unwrite()
 		self.feed_collection(batcher.collection, feedMode)
-		self.write_all(doSort = True)
+		self.write_all(doSort = True, verbose = True)
 
 	def __do_over_records(self, FH, k,
 		feedMode = BatcherThreading.FEED_MODE.APPEND):
@@ -328,7 +328,12 @@ class FastaBatcher(BatcherThreading):
 
 		self.feed_collection(list(itertools.chain(
 			*batchCollections)), feedMode)
-		self.write_all(doSort = True, verbose = True)
+
+		def do_sort_write(b):
+			b.write(True)
+		Parallel(n_jobs = self.threads, verbose = 11
+			)(delayed(do_sort_write)(b)
+			for b in self.collection if 0 != b.current_size)
 
 	def do(self, fasta, k, feedMode = BatcherThreading.FEED_MODE.APPEND):
 		"""Start batching the fasta file.
