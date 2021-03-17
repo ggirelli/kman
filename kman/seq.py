@@ -217,6 +217,7 @@ class Sequence(om.Sequence):
         """
 
         def kmerGen(seq, prefix, k, t, offset, strand, rc):
+            seq = seq.upper()
             if rc:
                 revStrand = SequenceCoords.rev(strand)
                 for i in range(len(seq) - k + 1):
