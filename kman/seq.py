@@ -8,6 +8,7 @@ from enum import Enum, unique
 import gzip
 import io
 from itertools import chain
+import logging
 import oligo_melting as om
 import re
 
@@ -221,7 +222,10 @@ class Sequence(om.Sequence):
             if rc:
                 revStrand = SequenceCoords.rev(strand)
                 for i in range(len(seq) - k + 1):
-                    if "N" in seq[i : i + k]:
+                    if not Sequence.check_ab(seq[i : i + k], t):
+                        logging.warning(
+                            f"skipped sequence with unexpected character: {seq[i : i + k]}"
+                        )
                         continue
                     yield KMer(
                         prefix,
@@ -241,7 +245,10 @@ class Sequence(om.Sequence):
                     )
             else:
                 for i in range(len(seq) - k + 1):
-                    if "N" in seq[i : i + k]:
+                    if not Sequence.check_ab(seq[i : i + k], t):
+                        logging.warning(
+                            f"skipped sequence with unexpected character: {seq[i : i + k]}"
+                        )
                         continue
                     yield KMer(
                         prefix,
