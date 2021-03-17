@@ -222,7 +222,7 @@ class Sequence(om.Sequence):
             if rc:
                 revStrand = SequenceCoords.rev(strand)
                 for i in range(len(seq) - k + 1):
-                    if not Sequence.check_ab(seq[i : i + k], t):
+                    if not Sequence.check_ab(seq[i : i + k], om.AB_NA[t]):
                         logging.warning(
                             f"skipped sequence with unexpected character: {seq[i : i + k]}"
                         )
@@ -245,7 +245,7 @@ class Sequence(om.Sequence):
                     )
             else:
                 for i in range(len(seq) - k + 1):
-                    if not Sequence.check_ab(seq[i : i + k], t):
+                    if not Sequence.check_ab(seq[i : i + k], om.AB_NA[t]):
                         logging.warning(
                             f"skipped sequence with unexpected character: {seq[i : i + k]}"
                         )
