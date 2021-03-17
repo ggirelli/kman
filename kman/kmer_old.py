@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
 @description: methods for kmer manipulation.
-'''
+"""
 
 # DEPENDENCIES =================================================================
 
@@ -29,15 +29,16 @@ handler_limit = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
 
 # FUNCTIONS ====================================================================
 
+
 def rc(seq, ab):
-    '''
+    """
     Args:
         seq (string): nucleic acid sequence.
         ab (list): alphabet list, with letters and their reverse.
 
     Return:
         string: reverse complement of seq.
-    '''
+    """
 
     assert type([]) == type(ab)
     assert 2 == len(ab)
@@ -49,17 +50,17 @@ def rc(seq, ab):
     seq = seq.lower()
     for c in seq:
         if not c in ab:
-            print('ERROR: provided string conflicts with the selected alphabet.')
+            print("ERROR: provided string conflicts with the selected alphabet.")
             return
 
     ab = dict([(ab[ci], rab[ci]) for ci in range(len(ab))])
     r = seq[::-1]
     rc = "".join([ab[c] for c in r]).upper()
-    return(rc)
+    return rc
 
-def parallel_sets_union(plist, opath, threads = 1, progress = True,
-    frec = None):
-    '''Make union of sorted sets of kmers written to disk, in parallel.
+
+def parallel_sets_union(plist, opath, threads=1, progress=True, frec=None):
+    """Make union of sorted sets of kmers written to disk, in parallel.
 
     Args:
         plist (list): list of tuples with abs.paths to sorted kmer sets
@@ -72,10 +73,10 @@ def parallel_sets_union(plist, opath, threads = 1, progress = True,
     Returns:
         int: number of output sequences
         str: output path.
-    '''
+    """
 
-    threads = check_threads(threads) # Check thread count
-    verbose = 11 if progress else 0     # Parallel verbosity
+    threads = check_threads(threads)  # Check thread count
+    verbose = 11 if progress else 0  # Parallel verbosity
 
     # Calculate sorting batch size
     batch_size = min(int(len(plist) / float(threads)), handler_limit - 24)
@@ -86,27 +87,33 @@ def parallel_sets_union(plist, opath, threads = 1, progress = True,
     else:
         print(" Performing parallel sorted unique kmer set union...")
         print(" Batch size: %d" % batch_size)
-        plist = Parallel(n_jobs = threads, verbose = verbose)(
-        delayed(sets_union)(plist[i:min(len(plist), i + batch_size)],
-            progress = False, headless = True, frec = frec)
-            for i in range(0, len(plist), batch_size))
+        plist = Parallel(n_jobs=threads, verbose=verbose)(
+            delayed(sets_union)(
+                plist[i : min(len(plist), i + batch_size)],
+                progress=False,
+                headless=True,
+                frec=frec,
+            )
+            for i in range(0, len(plist), batch_size)
+        )
 
     # If multiple outputs from parallelization, perform union
     if 1 != len(plist):
-        out = sets_union(plist, opath, progress, frec = frec)
+        out = sets_union(plist, opath, progress, frec=frec)
         for (p, n) in plist:
-            if p != opath: os.remove(p)
-        return(out)
+            if p != opath:
+                os.remove(p)
+        return out
     else:
         plist = plist[0]
         if plist[0] != opath:
             shutil.copyfile(plist[0], opath)
             os.remove(plist[0])
-        return((opath, plist[1]))
+        return (opath, plist[1])
 
-def sets_union(plist, opath = None, progress = False, headless = False,
-    frec = None):
-    '''Make union of sorted sets of kmers written to disk.
+
+def sets_union(plist, opath=None, progress=False, headless=False, frec=None):
+    """Make union of sorted sets of kmers written to disk.
 
     First merge kmer sets with a k-way merge (heapq.merge) to maintain the
     sorting, then iterate through the file and write only the first occurrence
@@ -122,89 +129,109 @@ def sets_union(plist, opath = None, progress = False, headless = False,
     Returns:
         int: number of output sequences
         str: output path.
-    '''
+    """
 
     def iterate_sorted_kset(path):
-        '''Iterates over sequences in header-less FASTA file.
+        """Iterates over sequences in header-less FASTA file.
 
         Args:
             path (str): path to header-less FASTA.
-        '''
+        """
 
         # Kill if file not found
-        if not os.path.isfile(path): return
+        if not os.path.isfile(path):
+            return
 
         # Prepare iterator
-        with open(path, 'r') as IH:
+        with open(path, "r") as IH:
             for record in SimpleFastaParser(IH):
-                yield(record)
+                yield (record)
 
     def write_seq(OH, record, c):
-        '''Writes one sequence to a FASTA file.
+        """Writes one sequence to a FASTA file.
 
         Args:
             OH (TextIOWrapper): handle to output file.
             record (tuple): (header, sequence).
             c (int): counter for id.
-        '''
+        """
         rid = "candidate_%d" % c
         rdescr = " ".join(record[0].split(" ")[1:])
         OH.write(">%s %s\n%s\n" % (rid, rdescr, record[1]))
-        return(c + 1)
+        return c + 1
 
-    def do_pass(): return(curr_c == 1 and 0 != len(curr_rec[1]))
+    def do_pass():
+        return curr_c == 1 and 0 != len(curr_rec[1])
 
     # Log status
-    if progress: print(" Performing sorted unique kmer set union...")
+    if progress:
+        print(" Performing sorted unique kmer set union...")
 
     if type(None) == type(opath):
-        (H, opath) = tempfile.mkstemp(".setUnion_output.fa"); os.close(H)
+        (H, opath) = tempfile.mkstemp(".setUnion_output.fa")
+        os.close(H)
 
     # Perform union in batches to avoid handle soft limit
-    (H, tpath) = tempfile.mkstemp(".setUnion_fasta.fa"); os.close(H)
+    (H, tpath) = tempfile.mkstemp(".setUnion_fasta.fa")
+    os.close(H)
     for i in range(0, len(plist), handler_limit - 24):
-        tplist = [plist[j][0] for j in range(i,
-            min(len(plist), i + handler_limit - 24))]
+        tplist = [
+            plist[j][0] for j in range(i, min(len(plist), i + handler_limit - 24))
+        ]
         tplist.append(tpath)
 
         # Prepare list of iterable generators
         generators = [iterate_sorted_kset(p) for p in tplist]
 
         # Merge iterables
-        crawl = merge(*generators, key = lambda x: x[1])
+        crawl = merge(*generators, key=lambda x: x[1])
         crawl = frec(crawl) if type(lambda x: x) == type(frec) else crawl
 
         # Write as output those sequences that appear only once
-        curr_rec = ["", ""]   # Current sequence
-        curr_c = 1      # Occurences counter
-        out_c = 1       # Candidate counter
-        with open(opath, 'w+') as OH:
+        curr_rec = ["", ""]  # Current sequence
+        curr_c = 1  # Occurences counter
+        out_c = 1  # Candidate counter
+        with open(opath, "w+") as OH:
             nseq = sum([t[1] for t in plist])
-            if progress: crawl = tqdm(crawl, total = nseq)
-            
+            if progress:
+                crawl = tqdm(crawl, total=nseq)
+
             for record in crawl:
                 # Increase occurrence counter
-                if record[1] == curr_rec[1]: curr_c += 1
+                if record[1] == curr_rec[1]:
+                    curr_c += 1
                 else:
                     # Write out previous seq
-                    if do_pass(): out_c = write_seq(OH, curr_rec, out_c)
+                    if do_pass():
+                        out_c = write_seq(OH, curr_rec, out_c)
 
                     # Move to next
                     curr_rec = record
                     curr_c = 1
 
             # Write out last seq
-            if do_pass(): out_c = write_seq(OH, curr_rec, out_c)
+            if do_pass():
+                out_c = write_seq(OH, curr_rec, out_c)
 
         if not plist[-1][0] in tplist:
             os.rename(opath, tpath)
     os.remove(tpath)
 
-    return((opath, out_c - 1))
+    return (opath, out_c - 1)
 
-def uniq_as_fasta(k, record, klim, threads = 1, allow_non_ACTUG = False,
-    encountered = None, single = False, fasta_delim = "=", frec = None):
-    '''Extract unique kmers (k-characters substring) from a sequence (string).
+
+def uniq_as_fasta(
+    k,
+    record,
+    klim,
+    threads=1,
+    allow_non_ACTUG=False,
+    encountered=None,
+    single=False,
+    fasta_delim="=",
+    frec=None,
+):
+    """Extract unique kmers (k-characters substring) from a sequence (string).
     Converts the input sequence in a FASTA-like file with records of up to klim
     kmers, and uses the uniq_fasta function to avoid keeping the whole kmer set
     in memory.
@@ -223,19 +250,21 @@ def uniq_as_fasta(k, record, klim, threads = 1, allow_non_ACTUG = False,
     Returns:
         list: sorted unique kmer list.
         str: path to output file.
-    '''
+    """
 
-    threads = check_threads(threads) # Check thread count
-    if klim < 100: klim = 100  # Set minimum batch size
+    threads = check_threads(threads)  # Check thread count
+    if klim < 100:
+        klim = 100  # Set minimum batch size
 
     seq = record[1]
-    chrom = re.findall(r'pos%s(.+):(.+)-(.+);' % fasta_delim, record[0])
+    chrom = re.findall(r"pos%s(.+):(.+)-(.+);" % fasta_delim, record[0])
     cstart = 0 if 0 == len(chrom) else int(chrom[0][1])
     cend = 0 if 0 == len(chrom) else int(chrom[0][2])
     chrom = record[0].split(" ")[0] if 0 == len(chrom) else chrom[0][0]
 
     # Convert to temporary FASTA file
-    (H, tipath) = tempfile.mkstemp(".uaf.fa"); os.close(H)
+    (H, tipath) = tempfile.mkstemp(".uaf.fa")
+    os.close(H)
     c = 0
     with open(tipath, "w+") as TIH:
         for tstart in range(0, len(seq), klim):
@@ -245,18 +274,30 @@ def uniq_as_fasta(k, record, klim, threads = 1, allow_non_ACTUG = False,
 
             # Build and write FASTA record
             rid = "seq_%d" % c
-            rdescr = "pos%s%s:%d-%d;" % (fasta_delim, chrom,
-                tstart + 1 + cstart - 1, tend + 1 + cend - 1)
+            rdescr = "pos%s%s:%d-%d;" % (
+                fasta_delim,
+                chrom,
+                tstart + 1 + cstart - 1,
+                tend + 1 + cend - 1,
+            )
             TIH.write(">%s %s\n%s\n" % (rid, rdescr, seq[tstart:tend]))
 
     # Set verbosity
     progress = False if 1 == threads else True
 
     # Generate unique kmers
-    (H, topath) = tempfile.mkstemp(".uaf_kset.fa"); os.close(H)
-    nseq = uniq_fasta(k, tipath, topath, threads = threads,
-        allow_non_ACTUG = allow_non_ACTUG, encountered = encountered,
-        progress = progress, fasta_delim = fasta_delim)
+    (H, topath) = tempfile.mkstemp(".uaf_kset.fa")
+    os.close(H)
+    nseq = uniq_fasta(
+        k,
+        tipath,
+        topath,
+        threads=threads,
+        allow_non_ACTUG=allow_non_ACTUG,
+        encountered=encountered,
+        progress=progress,
+        fasta_delim=fasta_delim,
+    )
     os.remove(tipath)
 
     if not single:
@@ -264,26 +305,41 @@ def uniq_as_fasta(k, record, klim, threads = 1, allow_non_ACTUG = False,
         with open(topath, "r") as IH:
             # Prepare sequence generator
             def fastagen(IH):
-                for r in SimpleFastaParser(IH): yield(r)
+                for r in SimpleFastaParser(IH):
+                    yield (r)
 
             nrecs = fasta.count_records(topath)
             if type(lambda x: x) == type(frec):
                 crawler = frec(fastagen(IH))
             else:
                 crawler = fastagen(IH)
-            if progress: crawler = tqdm(crawler, total = nrecs)
+            if progress:
+                crawler = tqdm(crawler, total=nrecs)
 
             kset = []
-            for r in crawler: kset.append((r[1], r[0]))
+            for r in crawler:
+                kset.append((r[1], r[0]))
         os.remove(topath)
-        return((kset, topath))
+        return (kset, topath)
     else:
-        return(([], topath))
+        return ([], topath)
 
-def uniq_fasta(k, fpath, opath, klim = 0, threads = 1, allow_non_ACTUG = False,
-    encountered = None, progress = False, fasta_delim = "=", frec = None,
-    reverseAB = None, **kwargs):
-    '''Extract unique kmers from a FASTA file.
+
+def uniq_fasta(
+    k,
+    fpath,
+    opath,
+    klim=0,
+    threads=1,
+    allow_non_ACTUG=False,
+    encountered=None,
+    progress=False,
+    fasta_delim="=",
+    frec=None,
+    reverseAB=None,
+    **kwargs,
+):
+    """Extract unique kmers from a FASTA file.
     Stores the list of uniqued kmers in memory for one FASTA record at a time.
 
     For each of the M FASTA records, extract unique kmers and write the sorted
@@ -304,9 +360,9 @@ def uniq_fasta(k, fpath, opath, klim = 0, threads = 1, allow_non_ACTUG = False,
 
     Returns:
         int: size of sorted unique kmer set written to disk.
-    '''
+    """
 
-    threads = check_threads(threads) # Check thread count
+    threads = check_threads(threads)  # Check thread count
 
     # Make temporary folder
     tmpdir = tempfile.mkdtemp("_uniq_fasta")
@@ -319,17 +375,25 @@ def uniq_fasta(k, fpath, opath, klim = 0, threads = 1, allow_non_ACTUG = False,
     single = True if 1 == fasta.count_records(fpath) else False
 
     # Common arguments
-    pargs = {'k':k, 'outdir':tmpdir, 'single':single,
-        'fasta_delim':fasta_delim, 'frec':frec}
+    pargs = {
+        "k": k,
+        "outdir": tmpdir,
+        "single": single,
+        "fasta_delim": fasta_delim,
+        "frec": frec,
+    }
 
     def recGenBase(IH):
         for record in SimpleFastaParser(IH):
-            yield(record)
+            yield (record)
+
     if not type(None) == type(reverseAB):
+
         def recGen(IH):
             for record in recGenBase(IH):
-                yield(record)
-                yield((f"rc_{record[0]}", rc(record[1], reverseAB)))
+                yield (record)
+                yield ((f"rc_{record[0]}", rc(record[1], reverseAB)))
+
     else:
         recGen = recGenBase
 
@@ -337,15 +401,19 @@ def uniq_fasta(k, fpath, opath, klim = 0, threads = 1, allow_non_ACTUG = False,
     if 1 == threads or 0 != klim:
         # Either normally or in batches (and parallel)
         for record in recGen(IH):
-            tplist.append(uniq_record(record,
-                klim = klim, threads = threads, progress = progress, **pargs))
+            tplist.append(
+                uniq_record(
+                    record, klim=klim, threads=threads, progress=progress, **pargs
+                )
+            )
     else:
-        verbose = 11 if progress else 0 # Parallel verbosity
+        verbose = 11 if progress else 0  # Parallel verbosity
 
         # In parallel
-        tplist = Parallel(n_jobs = threads, verbose = verbose)(
-            delayed(uniq_record)(record, progress = False, **pargs)
-            for record in recGen(IH))
+        tplist = Parallel(n_jobs=threads, verbose=verbose)(
+            delayed(uniq_record)(record, progress=False, **pargs)
+            for record in recGen(IH)
+        )
 
     # Remove None objects
     tplist = [p for p in tplist if type(None) != type(p)]
@@ -355,8 +423,9 @@ def uniq_fasta(k, fpath, opath, klim = 0, threads = 1, allow_non_ACTUG = False,
 
     if 1 != len(tplist):
         # Perform sorted sets union and make output FASTA
-        opath, nseq = parallel_sets_union(tplist, opath,
-            threads = threads, progress = progress)
+        opath, nseq = parallel_sets_union(
+            tplist, opath, threads=threads, progress=progress
+        )
     else:
         # Convert single header-less FASTA to FASTA
         tpath, nseq = tplist[0]
@@ -368,12 +437,23 @@ def uniq_fasta(k, fpath, opath, klim = 0, threads = 1, allow_non_ACTUG = False,
     # Delete temporary folder
     shutil.rmtree(tmpdir)
 
-    return(nseq)
+    return nseq
 
-def uniq_record(record, k, outdir, klim = 0, threads = 1,
-    allow_non_ACTUG = False, encountered = None, single = False,
-    progress = False, fasta_delim = "=", frec = None):
-    '''Extract unique kmers from a single FASTA record.
+
+def uniq_record(
+    record,
+    k,
+    outdir,
+    klim=0,
+    threads=1,
+    allow_non_ACTUG=False,
+    encountered=None,
+    single=False,
+    progress=False,
+    fasta_delim="=",
+    frec=None,
+):
+    """Extract unique kmers from a single FASTA record.
     Either convert to FASTA for batched analysis, or run normally.
 
     Args:
@@ -393,56 +473,72 @@ def uniq_record(record, k, outdir, klim = 0, threads = 1,
         str: path to output file.
         int: number of sequences in output file.
         None: if no kmers are accepted.
-    '''
+    """
 
-    threads = check_threads(threads) # Check thread count
+    threads = check_threads(threads)  # Check thread count
 
     # Log record
-    if progress: print(" Parsing kmers from record '%s'..." % record[0])
+    if progress:
+        print(" Parsing kmers from record '%s'..." % record[0])
 
     # Common arguments
-    pargs = {'k':k, 'fasta_delim':fasta_delim, 'record':record,
-        'allow_non_ACTUG':allow_non_ACTUG, 'encountered':encountered}
+    pargs = {
+        "k": k,
+        "fasta_delim": fasta_delim,
+        "record": record,
+        "allow_non_ACTUG": allow_non_ACTUG,
+        "encountered": encountered,
+    }
 
     # Extract unique kmers
     if klim > 0:
         # Batched analysis
-        kset, topath = uniq_as_fasta(klim = klim,
-            threads = threads, single = single, **pargs)
+        kset, topath = uniq_as_fasta(klim=klim, threads=threads, single=single, **pargs)
 
-        if single: return((topath, fasta.count_records(topath)))
+        if single:
+            return (topath, fasta.count_records(topath))
     else:
-        kset, discarded = uniq_seq(progress = progress, **pargs)
+        kset, discarded = uniq_seq(progress=progress, **pargs)
 
         # Sort
-        if progress: print(
-            " Sorting unique kmer set for record '%s'..." % record[0])
-        kset = sorted(kset.items(), key = lambda x: x[0])
+        if progress:
+            print(" Sorting unique kmer set for record '%s'..." % record[0])
+        kset = sorted(kset.items(), key=lambda x: x[0])
 
     if 0 != len(kset):
         # Write FASTA output
         if progress:
             print(" Writing sorted kmer set for record '%s'..." % record[0])
-            
+
         rid = record[0].split(" ")[0]
         (H, tpath) = tempfile.mkstemp(".txt", "%s." % rid, outdir)
         os.close(H)
 
-        with open(tpath, 'w+') as OH:
+        with open(tpath, "w+") as OH:
+
             def crawler(kset):
-                for (seq, head) in kset: yield((head, seq))
+                for (seq, head) in kset:
+                    yield ((head, seq))
 
             crawl = crawler(kset)
-            crawl = tqdm(crawl, total = len(kset)) if progress else crawl
+            crawl = tqdm(crawl, total=len(kset)) if progress else crawl
             crawl = frec(crawl) if type(lambda x: x) == type(frec) else crawl
             for (head, seq) in crawl:
                 OH.write(">%s\n%s\n" % (head, seq))
-        
-        return((tpath, len(kset)))
 
-def uniq_seq(k, record, allow_non_ACTUG = False, encountered = None,
-    progress = False, fasta_delim = "=", frec = None):
-    '''Extract unique kmers (k-characters substring) from a sequence (string).
+        return (tpath, len(kset))
+
+
+def uniq_seq(
+    k,
+    record,
+    allow_non_ACTUG=False,
+    encountered=None,
+    progress=False,
+    fasta_delim="=",
+    frec=None,
+):
+    """Extract unique kmers (k-characters substring) from a sequence (string).
     Needs to be able store the list of uniqued kmers in memory.
 
     Args:
@@ -453,16 +549,15 @@ def uniq_seq(k, record, allow_non_ACTUG = False, encountered = None,
         progress (bool): show progress bar.
         fasta_delim (str): FASTA header key-val delimiter.
         frec (fun): intermediate generator function to run on FASTA records.
-    '''
+    """
 
     def update_sets(kmer, name, chrom, start, end):
-        '''Update current unique kmer and discarded kmer sets.'''
-        
+        """Update current unique kmer and discarded kmer sets."""
+
         # Add if never encountered, remove otherwise
         if kmer not in encountered:
             if kmer not in kset.keys():
-                header = ">%s pos%s%s:%d-%d" % (
-                    name, fasta_delim, chrom, start, end)
+                header = ">%s pos%s%s:%d-%d" % (name, fasta_delim, chrom, start, end)
                 if type(lambda x: x) == type(frec):
                     (header, kmer) = frec((header, kmer))
                 kset[kmer] = header[1:]
@@ -471,12 +566,12 @@ def uniq_seq(k, record, allow_non_ACTUG = False, encountered = None,
                 encountered.add(kmer)
 
     def kpgen(crawler, seq):
-        '''Generate (kmer, position) tuples.'''
+        """Generate (kmer, position) tuples."""
         for i in crawler:
-            yield((seq[i:(i + k)].upper(), i))
+            yield ((seq[i : (i + k)].upper(), i))
 
     seq = record[1]
-    chrom = re.findall(r'pos%s(.+):(.+)-(.+);' % fasta_delim, record[0])
+    chrom = re.findall(r"pos%s(.+):(.+)-(.+);" % fasta_delim, record[0])
     cstart = 0 if 0 == len(chrom) else int(chrom[0][1])
     cend = 0 if 0 == len(chrom) else int(chrom[0][2])
     chrom = record[0].split(" ")[0] if 0 == len(chrom) else chrom[0][0]
@@ -494,8 +589,10 @@ def uniq_seq(k, record, allow_non_ACTUG = False, encountered = None,
     # Extract kmers
     for (kmer, i) in crawler:
         # Update sets if non-ACTUG characters are allowed
-        if allow_non_ACTUG: update_sets(kmer, record[0].split(" ")[0],
-            chrom, i + cstart - 1, i + k + cstart - 1)
+        if allow_non_ACTUG:
+            update_sets(
+                kmer, record[0].split(" ")[0], chrom, i + cstart - 1, i + k + cstart - 1
+            )
         else:
             # Check for non-ACTUG
             skip = False
@@ -505,10 +602,17 @@ def uniq_seq(k, record, allow_non_ACTUG = False, encountered = None,
                     break
 
             # Skip or update
-            if not skip: update_sets(kmer, record[0].split(" ")[0],
-                chrom, i + cstart - 1, i + k + cstart - 1)
+            if not skip:
+                update_sets(
+                    kmer,
+                    record[0].split(" ")[0],
+                    chrom,
+                    i + cstart - 1,
+                    i + k + cstart - 1,
+                )
 
-    return((kset, encountered))
+    return (kset, encountered)
+
 
 # END ==========================================================================
 

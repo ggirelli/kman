@@ -41,8 +41,8 @@ setup(
     install_requires=[
         "biopython",
         "ggc",
-	"h5py",
-	"joblib",
+        "h5py",
+        "joblib",
         "numpy",
         "oligo_melting @ git+ssh://git@github.com/ggirelli/oligo-melting@dev#egg=oligo-melting",
         "tqdm",
