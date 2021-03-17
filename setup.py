@@ -41,8 +41,10 @@ setup(
     install_requires=[
         "biopython",
         "ggc",
+	"h5py",
+	"joblib",
         "numpy",
-        "oligo_melting @ git+ssh://git@github.com/someorgname/oligo-melting@dev#egg=oligo-melting",
+        "oligo_melting @ git+ssh://git@github.com/ggirelli/oligo-melting@dev#egg=oligo-melting",
         "tqdm",
     ],
     scripts=["bin/kmer_batch", "bin/kmer_count", "bin/kmer_uniq"],
