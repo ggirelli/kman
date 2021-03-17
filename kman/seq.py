@@ -221,6 +221,8 @@ class Sequence(om.Sequence):
             if rc:
                 revStrand = SequenceCoords.rev(strand)
                 for i in range(len(seq) - k + 1):
+                    if "N" in seq[i : i + k]:
+                        continue
                     yield KMer(
                         prefix,
                         i + offset,
@@ -239,6 +241,8 @@ class Sequence(om.Sequence):
                     )
             else:
                 for i in range(len(seq) - k + 1):
+                    if "N" in seq[i : i + k]:
+                        continue
                     yield KMer(
                         prefix,
                         i + offset,
