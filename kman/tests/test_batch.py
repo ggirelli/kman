@@ -163,7 +163,7 @@ def test_BatchAppendable():
         "Second record\n",
         "Third record\n",
     ]
-    assert recList == list(b.sorted())
+    assert recList == list(b.sorted()), (recList, list(b.sorted()))
 
     b.write()
     b.reset()

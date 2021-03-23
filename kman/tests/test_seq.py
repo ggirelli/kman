@@ -125,7 +125,7 @@ def test_Sequence():
     s = Sequence("ACGAT", om.NATYPES.DNA, ref)
     k4mer = [KMer(ref, 0, 4, "ACGA"), KMer(ref, 1, 5, "CGAT")]
 
-    assert k4mer == list(s.kmers(4))
+    assert k4mer == list(s.kmers(4)), (k4mer, list(s.kmers(4)))
     assert k4mer == list(s.kmerator(s.text, 4, s.natype, ref))
 
     s = Sequence("ACGATCGATCG", om.NATYPES.DNA)

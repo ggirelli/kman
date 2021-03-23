@@ -150,12 +150,17 @@ class Batch(object):
         Returns:
                 generator
         """
-        return sorted(self.record_gen(smart), key=lambda x: getattr(x, self.keyAttr))
+        if self.isFasta:
+            return sorted(
+                self.record_gen(smart), key=lambda x: getattr(x, self.keyAttr)
+            )
+        else:
+            return sorted(self.record_gen(smart))
 
     def _record_gen_from_handle(self, TH: IO, smart=False):
         if self.isFasta:
-            fasta_parser = SmartFastaParser if smart else SimpleFastaParser
-            for record in fasta_parser(TH).parse():
+            fasta_parser = SmartFastaParser.parse_file if smart else SimpleFastaParser
+            for record in fasta_parser(TH):
                 yield getattr(self.__type, self.fread)(record)
         else:
             for line in TH:
@@ -200,8 +205,9 @@ class Batch(object):
 
     def check_record(self, record):
         """Check that record type matches the Batch."""
-        assert_msg = "record must be %s, not %s." % (self.type, type(record))
-        assert type(record) == self.type, assert_msg
+        assert (
+            type(record) == self.type
+        ), f"record must be {self.type}, not {type(record)}."
 
     def add(self, record):
         """Add a record to the current batch.

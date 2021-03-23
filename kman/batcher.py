@@ -44,7 +44,7 @@ class BatcherBase(object):
     _tmp = None
     _batches = None
     __size = DEFAULT_BATCH_SIZE
-    _type = Type[Sequence]
+    _type: Type[Sequence] = KMer
     __natype = DEFAULT_NATYPE
 
     def __init__(self, size=None, natype=None, tmp=None):
@@ -56,7 +56,8 @@ class BatcherBase(object):
                 tmp {tempfile.TemporaryDirectory}
         """
         super().__init__()
-        self.__size = int(size)
+        self.size = size
+        self.natype = natype
         if tempfile.TemporaryDirectory == type(tmp):
             self._tmpH = tmp
             self._tmp = tmp.name

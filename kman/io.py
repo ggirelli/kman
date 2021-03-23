@@ -91,8 +91,11 @@ class SmartFastaParser(object):
 
         while True:
             self.__reopen()
-            if type(None) == type(line):
+            if line is None:
                 line = self.__FH.readline()
+
+            if not line:
+                return
 
             if line[0] != ">":
                 raise ValueError(
@@ -104,9 +107,10 @@ class SmartFastaParser(object):
             self.__FH.close()
             yield title, "".join(seq_lines).replace(" ", "").replace("\r", "")
 
-            if not line:
-                return
-
             line = None
 
         assert False, "Should not reach this line"
+
+    @staticmethod
+    def parse_file(path):
+        return SmartFastaParser(path).parse()

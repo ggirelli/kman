@@ -75,7 +75,7 @@ class SequenceCoords(object):
     def __eq__(self, other):
         return all(
             [
-                not isinstance(other, SequenceCoords),
+                isinstance(other, SequenceCoords),
                 self.ref == other.ref,
                 self.start == other.start,
                 self.end == other.end,
@@ -141,8 +141,6 @@ class Sequence(om.Sequence):
         super().__init__(seq, t, name)
 
     def __eq__(self, other):
-        if not isinstance(other, Sequence):
-            return False
         return super().__eq__(other)
 
     def kmers(self, k):
@@ -257,7 +255,8 @@ class Sequence(om.Sequence):
                     )
                 )
                 continue
-            kmer_yielder(i, seq, prefix, k, t, offset, strand, rc)
+            for kmer in kmer_yielder(i, seq, prefix, k, t, offset, strand, rc):
+                yield kmer
 
     @staticmethod
     def kmerator(
@@ -275,7 +274,9 @@ class Sequence(om.Sequence):
                 offset {number} -- if this is a batch, current location for
                                    shifting (default: {0})
         """
-        return Sequence.yield_kmers(seq, prefix, k, t, offset, strand, rc)
+        return (
+            kmer for kmer in Sequence.yield_kmers(seq, prefix, k, t, offset, strand, rc)
+        )
 
     @staticmethod
     def batcher(seq, k, batchSize):
@@ -357,8 +358,6 @@ class KMer(Sequence):
         return self.text
 
     def __eq__(self, other):
-        if not isinstance(other, KMer):
-            return False
         if not self.coords == other.coords:
             return False
         return super().__eq__(other)

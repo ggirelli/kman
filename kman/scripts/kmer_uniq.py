@@ -39,7 +39,6 @@ sequence only once.
     parser.add_argument(
         "k",
         type=int,
-        required=True,
         help="""Oligonucleotide (substring) length in nucleotides.""",
     )
 
