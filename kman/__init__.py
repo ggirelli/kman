@@ -1,17 +1,19 @@
-# -*- coding: utf-8 -*-
-
-'''
+"""
 @author: Gabriele Girelli
-@email: gigi.ga90@gmail.com
-@description: kman package.
-'''
+@contact: gigi.ga90@gmail.com
+"""
 
-# DEPENDENCIES =================================================================
+from kman import asserts, const, io
+from kman import batch, batcher
+from kman import abundance, seq, join
 
-__all__ = ["biopython", "tqdm"]
-
-import kman.kmer as Kmer
-
-# END ==========================================================================
-
-################################################################################
+__all__ = [
+    "abundance",
+    "asserts",
+    "batch",
+    "batcher",
+    "const",
+    "io",
+    "join",
+    "seq",
+]
