@@ -5,11 +5,12 @@
 """
 
 import gzip
-import h5py
-import numpy as np
+import h5py  # type: ignore
+import numpy as np  # type: ignore
 import os
 import tempfile
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
+from typing import Dict, Set
 
 
 class AbundanceVectorBase(object):
@@ -21,12 +22,12 @@ class AbundanceVectorBase(object):
             _ks {set} -- sequence lengths
     """
 
-    _ks = set()
+    _ks: Set[int] = set()
 
     def __init__(self):
         super().__init__()
 
-    def check_length(self, k):
+    def check_length(self, k: int):
         """Check that sequence length is compatible.
 
         Arguments:
@@ -86,8 +87,8 @@ class AbundanceVector(AbundanceVectorBase):
             __data {dict} -- stores abundance vectores
     """
 
-    """{ref:{strand:np.1darray}}"""
-    __data = {}
+    """{ref:{strand:np.ndarray}}"""
+    __data: Dict[str, Dict[str, np.ndarray]] = {}
 
     def __init__(self):
         super().__init__()
@@ -125,9 +126,9 @@ class AbundanceVector(AbundanceVectorBase):
                 strand {str} -- strand type
                 size {int} -- new size
         """
-        if not ref in self.__data.keys():
+        if ref not in self.__data.keys():
             self.__data[ref] = {}
-        if not strand in self.__data[ref].keys():
+        if strand not in self.__data[ref].keys():
             self.__data[ref][strand] = np.zeros(size)
         elif size > self.__data[ref][strand].shape[0]:
             self.__data[ref][strand].resize(size)
@@ -161,7 +162,7 @@ class AbundanceVectorLocal(AbundanceVectorBase):
 
     __tmpH = None
     _tmp = None
-    _dataList = set()
+    _dataList: Set[str] = set()
 
     def __init__(self):
         super(AbundanceVectorLocal, self).__init__()
@@ -214,7 +215,7 @@ class AbundanceVectorLocal(AbundanceVectorBase):
                     DH["abundances"].resize((size + 1,))
 
     @staticmethod
-    def refname(ref, strand):
+    def refname(ref, strand) -> str:
         return "%s___%s.hdf5" % (ref, strand)
 
     def refpath(self, ref, strand):

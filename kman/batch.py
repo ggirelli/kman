@@ -4,13 +4,14 @@
 @description: batch systems
 """
 
-from Bio.SeqIO.FastaIO import SimpleFastaParser
+from Bio.SeqIO.FastaIO import SimpleFastaParser  # type: ignore
 import gzip
 from kman.seq import KMer
 from kman.io import SmartFastaParser
 import os
 import tempfile
 import time
+from typing import IO
 
 
 class Batch(object):
@@ -90,7 +91,7 @@ class Batch(object):
 
     @property
     def tmp(self):
-        if type(None) == type(self._tmp):
+        if self._tmp is None:
             with tempfile.NamedTemporaryFile(
                 mode="w+",
                 dir=self._tmp_dir,
@@ -151,6 +152,15 @@ class Batch(object):
         """
         return sorted(self.record_gen(smart), key=lambda x: getattr(x, self.keyAttr))
 
+    def _record_gen_from_handle(self, TH: IO, smart=False):
+        if self.isFasta:
+            fasta_parser = SmartFastaParser if smart else SimpleFastaParser
+            for record in fasta_parser(TH).parse():
+                yield getattr(self.__type, self.fread)(record)
+        else:
+            for line in TH:
+                yield getattr(self.__type, self.fread)(line)
+
     def _record_gen_from_file(self, smart=False):
         """Generator of records, reading from file.
 
@@ -165,16 +175,8 @@ class Batch(object):
             TH = gzip.open(self.tmp, "rt")
         else:
             TH = open(self.tmp, "r+")
-        if self.isFasta:
-            if smart:
-                for record in SmartFastaParser(TH).parse():
-                    yield getattr(self.__type, self.fread)(record)
-            else:
-                for record in SimpleFastaParser(TH):
-                    yield getattr(self.__type, self.fread)(record)
-        else:
-            for line in TH:
-                yield getattr(self.__type, self.fread)(line)
+        for record in self._record_gen_from_handle(TH, smart):
+            yield record
         if not TH.closed:
             TH.close()
 

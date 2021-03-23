@@ -5,12 +5,10 @@
 """
 
 from enum import Enum, unique
-import gzip
-import io
-from itertools import chain
 import logging
-import oligo_melting as om
+import oligo_melting as om  # type: ignore
 import re
+from typing import Iterator, List
 
 
 class SequenceCoords(object):
@@ -75,17 +73,15 @@ class SequenceCoords(object):
         return self._strand
 
     def __eq__(self, other):
-        if not isinstance(other, SequenceCoords):
-            return False
-        if not self.ref == other.ref:
-            return False
-        if not self.start == other.start:
-            return False
-        if not self.end == other.end:
-            return False
-        if not self.strand == other.strand:
-            return False
-        return True
+        return all(
+            [
+                not isinstance(other, SequenceCoords),
+                self.ref == other.ref,
+                self.start == other.start,
+                self.end == other.end,
+                self.strand == other.strand,
+            ]
+        )
 
     @staticmethod
     def rev(strand):
@@ -135,7 +131,7 @@ class Sequence(om.Sequence):
 
     Variables:
             doReverseComplement {bool} -- whether to generate the reverse complement
-                                                                      when crawling through the sequence.
+                                          when crawling through the sequence.
     """
 
     doReverseComplement = False
@@ -201,6 +197,69 @@ class Sequence(om.Sequence):
             )
 
     @staticmethod
+    def __kmer_yielding(i, seq, prefix, k, t, offset, strand, rc) -> Iterator["KMer"]:
+        yield KMer(
+            prefix,
+            i + offset,
+            i + offset + k,
+            seq[i : i + k],
+            t,
+            strand=strand,
+        )
+
+    @staticmethod
+    def __kmer_yielding_with_rc(
+        i, seq, prefix, k, t, offset, strand, rc
+    ) -> Iterator["KMer"]:
+        yield KMer(
+            prefix,
+            i + offset,
+            i + offset + k,
+            seq[i : i + k],
+            t,
+            strand=strand,
+        )
+        yield KMer(
+            prefix,
+            i + offset,
+            i + offset + k,
+            Sequence.mkrc(seq[i : i + k], t),
+            t,
+            strand=SequenceCoords.rev(strand),
+        )
+
+    @staticmethod
+    def yield_kmers(seq, prefix, k, t, offset, strand, rc):
+        """Extract k-mers from seq.
+
+        Arguments:
+                seq {string} -- input sequence
+                k {int} -- substring length
+                t {om.NATYPES} -- nucleic acid type
+
+        Keyword Arguments:
+                prefix {str} -- reference record name (default: {"ref"})
+                offset {number} -- if this is a batch, current location for
+                                   shifting (default: {0})
+        """
+        seq = seq.upper()
+        kmer_yielder = (
+            Sequence.__kmer_yielding_with_rc if rc else Sequence.__kmer_yielding
+        )
+        for i in range(len(seq) - k + 1):
+            if not Sequence.check_ab(seq[i : i + k], om.AB_NA[t]):
+                logging.warning(
+                    " ".join(
+                        [
+                            "skipped sequence with unexpected character:",
+                            seq[i : i + k],
+                        ]
+                    )
+                )
+                continue
+            kmer_yielder(i, seq, prefix, k, t, offset, strand, rc)
+
+    @staticmethod
     def kmerator(
         seq, k, t, prefix="ref", offset=0, strand=SequenceCoords.STRAND.PLUS, rc=False
     ):
@@ -216,50 +275,7 @@ class Sequence(om.Sequence):
                 offset {number} -- if this is a batch, current location for
                                    shifting (default: {0})
         """
-
-        def kmerGen(seq, prefix, k, t, offset, strand, rc):
-            seq = seq.upper()
-            if rc:
-                revStrand = SequenceCoords.rev(strand)
-                for i in range(len(seq) - k + 1):
-                    if not Sequence.check_ab(seq[i : i + k], om.AB_NA[t]):
-                        logging.warning(
-                            f"skipped sequence with unexpected character: {seq[i : i + k]}"
-                        )
-                        continue
-                    yield KMer(
-                        prefix,
-                        i + offset,
-                        i + offset + k,
-                        seq[i : i + k],
-                        t,
-                        strand=strand,
-                    )
-                    yield KMer(
-                        prefix,
-                        i + offset,
-                        i + offset + k,
-                        Sequence.mkrc(seq[i : i + k], t),
-                        t,
-                        strand=revStrand,
-                    )
-            else:
-                for i in range(len(seq) - k + 1):
-                    if not Sequence.check_ab(seq[i : i + k], om.AB_NA[t]):
-                        logging.warning(
-                            f"skipped sequence with unexpected character: {seq[i : i + k]}"
-                        )
-                        continue
-                    yield KMer(
-                        prefix,
-                        i + offset,
-                        i + offset + k,
-                        seq[i : i + k],
-                        t,
-                        strand=strand,
-                    )
-
-        return kmerGen(seq, prefix, k, t, offset, strand, rc)
+        return Sequence.yield_kmers(seq, prefix, k, t, offset, strand, rc)
 
     @staticmethod
     def batcher(seq, k, batchSize):
@@ -386,7 +402,7 @@ class KMer(Sequence):
                 bool -- whether AB is respected.
         """
         for c in set(self.text):
-            if not c in self.ab[0]:
+            if c not in self.ab[0]:
                 return False
         return True
 
@@ -403,7 +419,7 @@ class SequenceCount(Sequence):
             __headers {list} -- list of headers.
     """
 
-    __headers = []
+    __headers: List[str] = []
 
     def __init__(self, seq, headers, t=om.NATYPES.DNA):
         super().__init__(seq, t)

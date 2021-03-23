@@ -5,21 +5,17 @@
 """
 
 from enum import Enum
-from ggc.args import check_threads
-import gzip
+from ggc.args import check_threads  # type: ignore
 from heapq import merge
-import io
 from itertools import chain
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed  # type: ignore
 from kman.abundance import AbundanceVector, AbundanceVectorLocal
 from kman.batch import Batch, BatchAppendable
 from kman.batcher import BatcherThreading
 from kman.seq import SequenceCoords, SequenceCount
-import numpy as np
-import os
+import numpy as np  # type: ignore
 import tempfile
-import time
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
 
 
 class Crawler(object):
@@ -140,7 +136,7 @@ class KJoiner(object):
                 SEQ_COUNT {number} -- count sequences
                 VEC_COUNT {number} -- produce abundance vector
                 VEC_COUNT_MASKED {number} -- produce abundance vector w/o counting
-                                                                         abundance in same reference record
+                                             abundance in same reference record
         """
 
         UNIQUE = 1
@@ -176,10 +172,10 @@ class KJoiner(object):
                 mode {KJoiner.MODE} -- (default: {None})
         """
         super().__init__()
-        if type(mode) != type(None):
+        if mode is not None:
             assert mode in self.MODE
             self.__mode = mode
-        if type(memory) != type(None):
+        if memory is not None:
             assert memory in self.MEMORY
             self.__memory = memory
         self.__set_join_function()
@@ -403,7 +399,7 @@ class KJoinerThreading(KJoiner):
 
     @property
     def tmp(self):
-        if type(None) == type(self._tmp):
+        if self._tmp is None:
             self._tmp = tempfile.TemporaryDirectory(prefix="kmanJoin")
         return self._tmp
 

@@ -5,17 +5,19 @@
 """
 
 from enum import Enum
-from ggc.args import check_threads
+from ggc.args import check_threads  # type: ignore
 import gzip
 import itertools
 from kman.batch import Batch
 from kman.seq import KMer, Sequence
 from kman.io import SmartFastaParser
-from joblib import Parallel, delayed
-import oligo_melting as om
+from joblib import Parallel, delayed  # type: ignore
+import logging
+import oligo_melting as om  # type: ignore
 import os
 import tempfile
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
+from typing import Type, Union
 
 
 class BatcherBase(object):
@@ -27,7 +29,6 @@ class BatcherBase(object):
 
     Variables:
             DEFAULT_BATCH_SIZE {int} -- default batch size
-            DEFAULT_BATCH_TYPE {type} -- default batched record type
             DEFAULT_NATYPE {om.NATYPES} -- default nucleic acid type
             _tmp {tempfile.TemporaryDirectory}
             _batches {list} -- list of Batch instances
@@ -37,14 +38,13 @@ class BatcherBase(object):
     """
 
     DEFAULT_BATCH_SIZE = int(1e6)
-    DEFAULT_BATCH_TYPE = KMer
     DEFAULT_NATYPE = om.NATYPES.DNA
 
     _tmpH = None
     _tmp = None
     _batches = None
     __size = DEFAULT_BATCH_SIZE
-    _type = DEFAULT_BATCH_TYPE
+    _type = Type[Sequence]
     __natype = DEFAULT_NATYPE
 
     def __init__(self, size=None, natype=None, tmp=None):
@@ -56,31 +56,38 @@ class BatcherBase(object):
                 tmp {tempfile.TemporaryDirectory}
         """
         super().__init__()
-        if type(None) != type(size):
-            assert size >= 1
-            self.__size = int(size)
-        if type(None) != type(natype):
-            assert natype in om.NATYPES
-            self.__natype = natype
+        self.__size = int(size)
         if tempfile.TemporaryDirectory == type(tmp):
             self._tmpH = tmp
             self._tmp = tmp.name
-        elif type(None) != type(tmp):
+        elif tmp is not None:
             self._tmp = tmp
-        if type(None) == type(self._batches):
+        if self._batches is None:
             self._batches = [Batch.from_batcher(self)]
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self.__size
 
+    @size.setter
+    def size(self, size: Union[int, None]) -> None:
+        if size is not None:
+            assert size >= 1
+            self.__size = size
+
     @property
-    def type(self):
+    def type(self) -> om.NATYPES:
         return self._type
 
     @property
     def natype(self):
         return self.__natype
+
+    @natype.setter
+    def natype(self, natype: Union[om.NATYPES, None]) -> None:
+        if natype is not None:
+            assert natype in om.NATYPES
+            self.__natype = natype
 
     @property
     def collection(self):
@@ -88,7 +95,7 @@ class BatcherBase(object):
 
     @property
     def tmp(self):
-        if type(None) == type(self._tmp):
+        if self._tmp is None:
             self._tmpH = tempfile.TemporaryDirectory(prefix="kmanBatch")
             self._tmp = self._tmpH.name
         return self._tmp
@@ -183,6 +190,13 @@ class BatcherThreading(BatcherBase):
     def threads(self, t):
         self.__threads = check_threads(t)
 
+    def __flow_batches(self, collection) -> None:
+        for bi in tqdm(range(len(collection)), desc="Flowing"):
+            batch = collection.pop()
+            for record in batch.record_gen():
+                self.add_record(record)
+            batch.reset()
+
     def feed_collection(self, new_collection, mode=FEED_MODE.FLOW):
         """Feed new batch collection to the current one.
 
@@ -199,11 +213,7 @@ class BatcherThreading(BatcherBase):
         if mode == self.FEED_MODE.REPLACE:
             self._batches = new_collection
         elif mode == self.FEED_MODE.FLOW:
-            for bi in tqdm(range(len(new_collection)), desc="Flowing"):
-                batch = new_collection.pop()
-                for record in batch.record_gen():
-                    self.add_record(record)
-                batch.reset()
+            self.__flow_batches(new_collection)
         elif mode == self.FEED_MODE.APPEND:
             self._batches.extend(new_collection)
 
@@ -425,13 +435,12 @@ class FastaRecordBatcher(BatcherThreading):
         """
         record_name = record[0].split(" ")[0]
         if verbose:
-            print("Batching record '%s'..." % record_name)
+            logging.info(f"Batching record '{record_name}'...")
         if 1 == self.threads:
             kmerGen = Sequence.kmerator(
                 record[1], k, self.natype, record_name, rc=self.doReverseComplement
             )
-            if verbose:
-                kmerGen = tqdm(kmerGen)
+            kmerGen = tqdm(kmerGen) if verbose else kmerGen
             for kmer in kmerGen:
                 if kmer.is_ab_checked():
                     self.add_record(kmer)

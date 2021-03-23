@@ -6,6 +6,7 @@
 
 import gzip
 import io
+from typing import List, Tuple
 
 
 class SmartFastaParser(object):
@@ -49,6 +50,31 @@ class SmartFastaParser(object):
                 self.__FH = open(self.__FH.name, "r+")
         self.__FH.seek(self.__pos)
 
+    def __skip_blank_and_comments(self) -> Tuple[str, bool]:
+        # Skip any text before the first record (e.g. blank lines, comments)
+        while True:
+            line = self.__FH.readline()
+            self.__pos = self.__FH.tell()
+            if line == "":
+                return ("", False)  # Premature end of file, or just empty?
+            if line[0] == ">":
+                break
+        return (line, True)
+
+    def __parse_sequence(self) -> List[str]:
+        lines = []
+        line = self.__FH.readline()
+        while True:
+            if not line:
+                break
+            if line[0] == ">":
+                break
+            else:
+                self.__pos = self.__FH.tell()
+            lines.append(line.rstrip())
+            line = self.__FH.readline()
+        return lines
+
     def parse(self):
         """Iterate over Fasta records as string tuples.
 
@@ -60,15 +86,8 @@ class SmartFastaParser(object):
         Additionally, keep the Fasta handler open only when strictly necessary.
         """
         self.__reopen()
-
-        # Skip any text before the first record (e.g. blank lines, comments)
-        while True:
-            line = self.__FH.readline()
-            self.__pos = self.__FH.tell()
-            if line == "":
-                return  # Premature end of file, or just empty?
-            if line[0] == ">":
-                break
+        line, parsable = self.__skip_blank_and_comments()
+        assert parsable, "premature end of file or empty file"
 
         while True:
             self.__reopen()
@@ -80,20 +99,10 @@ class SmartFastaParser(object):
                     "Records in Fasta files should start with '>' character"
                 )
             title = line[1:].rstrip()
-            lines = []
-            line = self.__FH.readline()
-            while True:
-                if not line:
-                    break
-                if line[0] == ">":
-                    break
-                else:
-                    self.__pos = self.__FH.tell()
-                lines.append(line.rstrip())
-                line = self.__FH.readline()
+            seq_lines = self.__parse_sequence()
 
             self.__FH.close()
-            yield title, "".join(lines).replace(" ", "").replace("\r", "")
+            yield title, "".join(seq_lines).replace(" ", "").replace("\r", "")
 
             if not line:
                 return
