@@ -66,5 +66,4 @@ jobs:
     # run test suite
     - name: Test
       run: |
-        source .venv/bin/activate
-        pytest kman/tests/
+        poetry run pytest kman/tests/
