@@ -58,7 +58,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: .venv
-        key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+        key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}-py${{ matrix.python-version }}
     # install dependencies if cache does not exist
     - name: Install dependencies
       run: poetry install
@@ -66,4 +66,5 @@ jobs:
     # run test suite
     - name: Test
       run: |
-        poetry run pytest kman/tests/
+        source .venv/bin/activate
+        pytest kman/tests/
