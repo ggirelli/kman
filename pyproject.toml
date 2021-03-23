@@ -9,7 +9,7 @@ homepage = "https://github.com/ggirelli/kman"
 repository = "https://github.com/ggirelli/kman"
 keywords = ["biology", "DNA", "RNA", "kmer", "oligomer", "uniq", "unique", "count", "sequence"]
 classifiers = [
-    "Development Status :: 2 - Alpha",
+    "Development Status :: 2 - Pre-Alpha",
     "Environment :: Console",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
