@@ -32,7 +32,7 @@ biopython = "^1.78"
 h5py = "^3.2.1"
 joblib = "^1.0.1"
 numpy = "^1.20.1"
-oligo_melting = {git = "https://github.com/ggirelli/oligo-melting", branch = "dev"}
+oligo_melting = {git = "https://github.com/ggirelli/oligo-melting", branch = "dev", rev = "301b2c84a6a3b3ff7664e8b049316f39a140a1d2"}
 rich = "^9.10.0"
 tqdm = "^4.58.0"
 
