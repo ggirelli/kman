@@ -6,13 +6,12 @@
 from kman import asserts, const, io
 from kman import batch, batcher
 from kman import abundance, seq, join
-
-from importlib.metadata import version, PackageNotFoundError
+from importlib.metadata import version
 
 try:
     __version__ = version(__name__)
-except PackageNotFoundError:
-    pass
+except Exception as e:
+    raise e
 
 __all__ = [
     "__version__",

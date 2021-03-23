@@ -7,13 +7,13 @@
 
 [PyPi](https://pypi.org/project/kman/) | [docs](https://ggirelli.github.io/kman/)
 
-`kman` is a Python3.7+ package containing tools for selection of complementary oligonucleotides to build iFISH probes. It is based on our previous `ifpd` package, but works with a different and more detailed database format, allowing for more precise control on the probe design process. Read the online [documentation](https://ggirelli.github.io/kman/) for more details.
+`kman` is a Python3.8+ package containing tools for selection of complementary oligonucleotides to build iFISH probes. It is based on our previous `ifpd` package, but works with a different and more detailed database format, allowing for more precise control on the probe design process. Read the online [documentation](https://ggirelli.github.io/kman/) for more details.
 
 ## Requirements
 
-`kman` is fully implemented in Python3.7+, thus you need the corresponding Python version to run it. Check out [here](https://realpython.com/installing-python/) how to install Python+ on your machine if you don't have it yet.
+`kman` is fully implemented in Python3.8+, thus you need the corresponding Python version to run it. Check out [here](https://realpython.com/installing-python/) how to install Python+ on your machine if you don't have it yet.
 
-`kman` has been tested with Python 3.7, 3.8, and 3.9. We recommend installing it using `pipx` (see [below](https://github.com/ggirelli/kman#installation)) to avoid dependency conflicts with other packages. The packages it depends on are listed in our [dependency graph](https://github.com/ggirelli/kman/network/dependencies). We use [`poetry`](https://github.com/python-poetry/poetry) to handle our dependencies.
+`kman` has been tested with Python 3.8 and 3.9. We recommend installing it using `pipx` (see [below](https://github.com/ggirelli/kman#installation)) to avoid dependency conflicts with other packages. The packages it depends on are listed in our [dependency graph](https://github.com/ggirelli/kman/network/dependencies). We use [`poetry`](https://github.com/python-poetry/poetry) to handle our dependencies.
 
 ## Installation
 
