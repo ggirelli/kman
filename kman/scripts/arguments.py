@@ -4,7 +4,7 @@
 """
 
 import argparse
-from kman.const import __version__
+from kman import __version__
 import sys
 
 # import multiprocessing as mp

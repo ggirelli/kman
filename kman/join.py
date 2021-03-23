@@ -5,7 +5,6 @@
 """
 
 from enum import Enum
-from ggc.args import check_threads  # type: ignore
 from heapq import merge
 from itertools import chain
 from joblib import Parallel, delayed  # type: ignore
@@ -13,6 +12,7 @@ from kman.abundance import AbundanceVector, AbundanceVectorLocal
 from kman.batch import Batch, BatchAppendable
 from kman.batcher import BatcherThreading
 from kman.seq import SequenceCoords, SequenceCount
+import multiprocessing as mp
 import numpy as np  # type: ignore
 import tempfile
 from tqdm import tqdm  # type: ignore
@@ -385,7 +385,7 @@ class KJoinerThreading(KJoiner):
 
     @threads.setter
     def threads(self, t):
-        self._threads = check_threads(t)
+        self._threads = max(1, min(t, mp.cpu_count()))
 
     @property
     def batch_size(self):

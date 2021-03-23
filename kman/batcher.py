@@ -5,7 +5,6 @@
 """
 
 from enum import Enum
-from ggc.args import check_threads  # type: ignore
 import gzip
 import itertools
 from kman.batch import Batch
@@ -13,6 +12,7 @@ from kman.seq import KMer, Sequence
 from kman.io import SmartFastaParser
 from joblib import Parallel, delayed  # type: ignore
 import logging
+import multiprocessing as mp
 import oligo_melting as om  # type: ignore
 import os
 import tempfile
@@ -189,7 +189,7 @@ class BatcherThreading(BatcherBase):
 
     @threads.setter
     def threads(self, t):
-        self.__threads = check_threads(t)
+        self.__threads = max(1, min(t, mp.cpu_count()))
 
     def __flow_batches(self, collection) -> None:
         for bi in tqdm(range(len(collection)), desc="Flowing"):
@@ -236,7 +236,7 @@ class BatcherThreading(BatcherBase):
                 list -- list of Batches
         """
         assert os.path.isdir(dirPath)
-        threads = check_threads(threads)
+        threads = max(1, min(threads, mp.cpu_count()))
         if 1 == threads:
             return [
                 Batch.from_file(os.path.join(dirPath, fname), t, isFasta)

@@ -4,7 +4,7 @@
 """
 
 import argparse
-from kman.const import __version__
+from kman import __version__
 from kman.scripts import arguments as ap
 from kman import scripts
 import sys

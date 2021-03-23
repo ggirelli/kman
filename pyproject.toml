@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kman"
-version = "0.0.1"
+version = "0.0.2"
 description = "K-mer management tools"
 authors = ["Gabriele Girelli <gigi.ga90@gmail.com>"]
 license = "MIT"
@@ -9,14 +9,13 @@ homepage = "https://github.com/ggirelli/kman"
 repository = "https://github.com/ggirelli/kman"
 keywords = ["biology", "DNA", "RNA", "kmer", "oligomer", "uniq", "unique", "count", "sequence"]
 classifiers = [
-    "Development Status :: 2 - Alpha",
+    "Development Status :: 2 - Pre-Alpha",
     "Environment :: Console",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "License :: OSI Approved :: MIT License",
     "Operating System :: Unix",
     "Operating System :: POSIX :: Linux",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
 ]
@@ -27,12 +26,12 @@ include = [
 
 
 [tool.poetry.dependencies]
-python = "^3.7.1"
+python = "^3.8"
 biopython = "^1.78"
 h5py = "^3.2.1"
 joblib = "^1.0.1"
 numpy = "^1.20.1"
-oligo_melting = {git = "https://github.com/ggirelli/oligo-melting", branch = "dev"}
+oligo_melting = {git = "https://github.com/ggirelli/oligo-melting", rev = "301b2c8"}
 rich = "^9.10.0"
 tqdm = "^4.58.0"
 
