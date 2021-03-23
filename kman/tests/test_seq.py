@@ -1,34 +1,40 @@
 """
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-@description: test kman.seq module
 """
 
-from kman.seq import *
+from kman.seq import KMer, Sequence, SequenceCoords, SequenceCount
+import oligo_melting as om  # type: ignore
 
 
-def test_SequenceCoords():
+def test_SequenceCoords_start():
     try:
         SequenceCoords("chr1", -1, 1, SequenceCoords.STRAND.MINUS)
-    except AssertionError as e:
+    except AssertionError:
         pass
     else:
         assert False, "start must be tested to be >=0"
 
+
+def test_SequenceCoords_end():
     try:
         SequenceCoords("chr1", 0, -1, SequenceCoords.STRAND.MINUS)
-    except AssertionError as e:
+    except AssertionError:
         pass
     else:
         assert False, "end must be tested to be >=0"
 
+
+def test_SequenceCoords_strand():
     try:
         SequenceCoords("chr1", 0, 1, "minus")
-    except AssertionError as e:
+    except AssertionError:
         pass
     else:
         assert False, "strand must be tested to be from SequenceCoords.STRAND"
 
+
+def test_SequenceCoords_2():
     ref = "chr1"
     start = 0
     end = 1e3
@@ -47,42 +53,52 @@ def test_SequenceCoords():
     assert sc == SequenceCoords.from_str(strRep)
 
 
-def test_KMer():
+def test_KMer_start():
     try:
         KMer("chr1", -1, 10, "ACGATCGATCG")
-    except AssertionError as e:
+    except AssertionError:
         pass
     else:
         assert False, "start must be tested to be >=0"
 
+
+def test_KMer_end():
     try:
         KMer("chr1", 10, -1, "ACGATCGATCG")
-    except AssertionError as e:
+    except AssertionError:
         pass
     else:
         assert False, "end must be tested to be >=0"
 
+
+def test_KMer_strand():
     try:
         KMer("chr1", 0, 11, "ACGATCGATCG", strand="minus")
-    except AssertionError as e:
+    except AssertionError:
         pass
     else:
         assert False, "strand must be tested to be from SequenceCoords.STRAND"
 
+
+def test_KMer_NATYPE():
     try:
         KMer("chr1", 0, 11, "ACGATCGATCG", t="DNA")
-    except AssertionError as e:
+    except AssertionError:
         pass
     else:
         assert False, "nucl. acid type must be tested to be from om.NATYPES"
 
+
+def test_KMer_length():
     try:
         KMer("chr1", 0, 1, "ACGATCGATCG")
-    except AssertionError as e:
+    except AssertionError:
         pass
     else:
         assert False, "length must be tested for match"
 
+
+def test_KMer():
     seq = "ACGATCGATCG"
     k = KMer("chr1", 0, len(seq), seq)
     sc = SequenceCoords("chr1", 0, 11, SequenceCoords.STRAND.PLUS)
@@ -100,7 +116,7 @@ def test_KMer():
 def test_Sequence():
     try:
         Sequence("ACGATCGATCG", "DNA")
-    except AssertionError as e:
+    except AssertionError:
         pass
     else:
         assert False, "nucl. acid type must be tested to be from om.NATYPES"
@@ -167,7 +183,7 @@ def test_Sequence():
 def test_SequenceCount():
     try:
         SequenceCount("ACGATCGATCG", [1, 2, 3], "DNA")
-    except AssertionError as e:
+    except AssertionError:
         pass
     else:
         assert False, "nucl. acid type must be tested to be from om.NATYPES"

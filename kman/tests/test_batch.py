@@ -1,10 +1,9 @@
 """
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-@description: test kman.batch module
 """
 
-from kman.batch import *
+from kman.batch import Batch, BatchAppendable
 import os
 
 
@@ -18,7 +17,7 @@ def test_Batch():
     assert 5 == b.size
     assert 5 == b.remaining
     assert 0 == b.current_size
-    assert False == b.is_written
+    assert b.is_written is False
     assert str == b.type
     assert 0 == len(list(b.record_gen()))
     assert 0 == len(list(b.sorted()))
@@ -26,14 +25,14 @@ def test_Batch():
     assert isinstance(b.check_record("test"), type(None))
     try:
         b.check_record(1)
-    except AssertionError as e:
+    except AssertionError:
         pass
     else:
         assert False, "record type must be tested"
 
     try:
         b.add(1)
-    except AssertionError as e:
+    except AssertionError:
         pass
     else:
         assert False, "record type must be tested when adding it"
@@ -105,7 +104,7 @@ def test_BatchAppendable():
     assert 5 == b.size
     assert 5 == b.remaining
     assert 0 == b.current_size
-    assert True == b.is_written
+    assert b.is_written is True
     assert str == b.type
     assert 0 == len(list(b.record_gen()))
     assert 0 == len(list(b.sorted()))
@@ -113,14 +112,14 @@ def test_BatchAppendable():
     assert isinstance(b.check_record("test"), type(None))
     try:
         b.check_record(1)
-    except AssertionError as e:
+    except AssertionError:
         pass
     else:
         assert False, "record type must be tested"
 
     try:
         b.add(1)
-    except AssertionError as e:
+    except AssertionError:
         pass
     else:
         assert False, "record type must be tested when adding it"
