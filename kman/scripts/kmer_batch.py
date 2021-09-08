@@ -120,10 +120,9 @@ def run_batching(args: argparse.Namespace, batcher: FastaBatcher) -> None:
         for b in batchList:
             gzname = os.path.join(args.o, f"{os.path.basename(b.tmp)}.gz")
             OH = gzip.open(gzname, "wb")
-            IH = open(b.tmp, "rb")
-            for line in IH:
-                OH.write(line)
-            IH.close()
+            with open(b.tmp, "rb") as IH:
+                for line in IH:
+                    OH.write(line)
             OH.close()
     else:
         for b in batchList:

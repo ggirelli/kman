@@ -255,8 +255,7 @@ class Sequence(om.Sequence):
                     )
                 )
                 continue
-            for kmer in kmer_yielder(i, seq, prefix, k, t, offset, strand, rc):
-                yield kmer
+            yield from kmer_yielder(i, seq, prefix, k, t, offset, strand, rc)
 
     @staticmethod
     def kmerator(
@@ -274,9 +273,7 @@ class Sequence(om.Sequence):
                 offset {number} -- if this is a batch, current location for
                                    shifting (default: {0})
         """
-        return (
-            kmer for kmer in Sequence.yield_kmers(seq, prefix, k, t, offset, strand, rc)
-        )
+        return iter(Sequence.yield_kmers(seq, prefix, k, t, offset, strand, rc))
 
     @staticmethod
     def batcher(seq, k, batchSize):
@@ -318,9 +315,8 @@ class Sequence(om.Sequence):
         assert batchSize >= 1
         if batchSize == 1:
             return Sequence.kmerator(seq, k, t, prefix, rc=rc)
-        else:
-            for (seq2beKmered, i) in Sequence.batcher(seq, k, batchSize):
-                yield Sequence.kmerator(seq2beKmered, k, t, prefix, offset=i, rc=rc)
+        for (seq2beKmered, i) in Sequence.batcher(seq, k, batchSize):
+            yield Sequence.kmerator(seq2beKmered, k, t, prefix, offset=i, rc=rc)
 
 
 class KMer(Sequence):
@@ -400,10 +396,7 @@ class KMer(Sequence):
         Returns:
                 bool -- whether AB is respected.
         """
-        for c in set(self.text):
-            if c not in self.ab[0]:
-                return False
-        return True
+        return all(c in self.ab[0] for c in set(self.text))
 
 
 class SequenceCount(Sequence):
@@ -422,7 +415,7 @@ class SequenceCount(Sequence):
 
     def __init__(self, seq, headers, t=om.NATYPES.DNA):
         super().__init__(seq, t)
-        assert all([isinstance(h, str) for h in headers])
+        assert all(isinstance(h, str) for h in headers)
         self.__headers = headers
 
     @property

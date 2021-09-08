@@ -180,8 +180,7 @@ class Batch(object):
             TH = gzip.open(self.tmp, "rt")
         else:
             TH = open(self.tmp, "r+")
-        for record in self._record_gen_from_handle(TH, smart):
-            yield record
+        yield from self._record_gen_from_handle(TH, smart)
         if not TH.closed:
             TH.close()
 
@@ -196,11 +195,10 @@ class Batch(object):
                 record
         """
         if self.is_written:
-            for record in self._record_gen_from_file(smart):
-                yield record
+            yield from self._record_gen_from_file(smart)
         else:
             for record in self.__records:
-                if not type(None) == type(record):
+                if type(None) != type(record):
                     yield record
 
     def check_record(self, record):
@@ -253,7 +251,7 @@ class Batch(object):
             return (
                 getattr(r, self.fwrite)()
                 for r in self.record_gen()
-                if not type(None) == type(r)
+                if type(None) != type(r)
             )
 
     def write(self, doSort=False, force=False):
@@ -291,11 +289,7 @@ class Batch(object):
         """
 
         if isFasta:
-            if path.endswith(".gz"):
-                FH = gzip.open(path, "rt")
-            else:
-                FH = open(path, "r+")
-
+            FH = gzip.open(path, "rt") if path.endswith(".gz") else open(path, "r+")
             if smart:
                 size = max(2, sum(1 for record in SmartFastaParser(FH).parse()))
             else:
@@ -346,7 +340,7 @@ class Batch(object):
 
     def is_full(self):
         """Whether the Batch collection is full."""
-        return 0 == self.remaining
+        return self.remaining == 0
 
     def unwrite(self):
         """Unwrites the batch from storage.
@@ -399,9 +393,8 @@ class BatchAppendable(Batch):
         Yields:
                 record
         """
-        if 0 != self.current_size:
-            for record in self._record_gen_from_file(smart):
-                yield record
+        if self.current_size != 0:
+            yield from self._record_gen_from_file(smart)
 
     def add(self, record):
         """Add a record to the current batch.
@@ -464,11 +457,7 @@ class BatchAppendable(Batch):
         """
 
         if isFasta:
-            if path.endswith(".gz"):
-                FH = gzip.open(path, "rt")
-            else:
-                FH = open(path, "r+")
-
+            FH = gzip.open(path, "rt") if path.endswith(".gz") else open(path, "r+")
             if smart:
                 size = max(2, sum(1 for record in SmartFastaParser(FH).parse()))
             else:

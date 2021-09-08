@@ -134,7 +134,7 @@ class BatcherBase(object):
         if verbose:
             biList = tqdm(biList, desc=description)
         for bi in biList:
-            if 0 != self.collection[bi].current_size:
+            if self.collection[bi].current_size != 0:
                 self.collection[bi].write(f, doSort)
 
 
@@ -192,7 +192,7 @@ class BatcherThreading(BatcherBase):
         self.__threads = max(1, min(t, mp.cpu_count()))
 
     def __flow_batches(self, collection) -> None:
-        for bi in tqdm(range(len(collection)), desc="Flowing"):
+        for _ in tqdm(range(len(collection)), desc="Flowing"):
             batch = collection.pop()
             for record in batch.record_gen():
                 self.add_record(record)
@@ -210,7 +210,7 @@ class BatcherThreading(BatcherBase):
         Keyword Arguments:
                 mode {BatcherThreading.FEED_MODE} -- (default: {FEED_MODE.FLOW})
         """
-        assert all([b.type == self.type for b in new_collection])
+        assert all(b.type == self.type for b in new_collection)
         if mode == self.FEED_MODE.REPLACE:
             self._batches = new_collection
         elif mode == self.FEED_MODE.FLOW:
@@ -237,7 +237,7 @@ class BatcherThreading(BatcherBase):
         """
         assert os.path.isdir(dirPath)
         threads = max(1, min(threads, mp.cpu_count()))
-        if 1 == threads:
+        if threads == 1:
             return [
                 Batch.from_file(os.path.join(dirPath, fname), t, isFasta)
                 for fname in tqdm(os.listdir(dirPath))
@@ -376,11 +376,7 @@ class FastaBatcher(BatcherThreading):
         assert os.path.isfile(fasta)
         assert k > 1
 
-        if fasta.endswith(".gz"):
-            FH = gzip.open(fasta, "rt")
-        else:
-            FH = open(fasta, "r+")
-
+        FH = gzip.open(fasta, "rt") if fasta.endswith(".gz") else open(fasta, "r+")
         if self._mode == self.MODE.KMERS:
             self.__do_over_kmers(FH, k, feedMode)
         elif self._mode == self.MODE.RECORDS:
@@ -437,7 +433,7 @@ class FastaRecordBatcher(BatcherThreading):
         record_name = record[0].split(" ")[0]
         if verbose:
             logging.info(f"Batching record '{record_name}'...")
-        if 1 == self.threads:
+        if self.threads == 1:
             kmerGen = Sequence.kmerator(
                 record[1], k, self.natype, record_name, rc=self.doReverseComplement
             )

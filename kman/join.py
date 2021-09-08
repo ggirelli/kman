@@ -46,7 +46,7 @@ class Crawler(object):
         Returns:
                 int -- number of records
         """
-        return sum([b.current_size for b in batches])
+        return sum(b.current_size for b in batches)
 
     def do_records(self, batches):
         """Crawl through the batches.
@@ -61,14 +61,15 @@ class Crawler(object):
         Returns:
                 generator -- record generator
         """
-        assert all([type(b) in [Batch, BatchAppendable] for b in batches])
+        assert all(type(b) in [Batch, BatchAppendable] for b in batches)
 
         if self.doSort:
             generators = [
                 ((r.header, r.seq) for r in b.sorted(self.doSmart))
                 for b in batches
-                if not type(None) == type(b)
+                if type(None) != type(b)
             ]
+
         else:
             generators = [
                 ((r.header, r.seq) for r in b.record_gen(self.doSmart))
@@ -76,9 +77,7 @@ class Crawler(object):
                 if not type(None) == type(b)
             ]
 
-        crawler = merge(*generators, key=lambda x: x[1])
-
-        return crawler
+        return merge(*generators, key=lambda x: x[1])
 
     def do_batch(self, batches):
         """Group records from batches based on sequence.
@@ -274,10 +273,10 @@ class KJoiner(object):
                 vector {AbundanceVector}
         """
         headers = [SequenceCoords.from_str(h) for h in headers]
-        if not 1 == len(headers):
+        if len(headers) != 1:
             refList, refCounts = np.unique([h.ref for h in headers], return_counts=True)
 
-            if not 1 == len(refList):
+            if len(refList) != 1:
                 for h in headers:
                     hcount = refCounts[refList != h.ref].sum()
                     vector.add_count(
@@ -300,13 +299,12 @@ class KJoiner(object):
         kwargs = {"OH": outpath}
         if not self.mode.name.startswith("VEC_"):
             kwargs["OH"] = open(outpath, "w+")
+        elif self.memory == self.MEMORY.NORMAL:
+            kwargs["vector"] = AbundanceVector()
+        elif self.memory == self.MEMORY.LOCAL:
+            kwargs["vector"] = AbundanceVectorLocal()
         else:
-            if self.memory == self.MEMORY.NORMAL:
-                kwargs["vector"] = AbundanceVector()
-            elif self.memory == self.MEMORY.LOCAL:
-                kwargs["vector"] = AbundanceVectorLocal()
-            else:
-                assert self.memory in [self.MEMORY.NORMAL, self.MEMORY.LOCAL]
+            assert self.memory in [self.MEMORY.NORMAL, self.MEMORY.LOCAL]
         return kwargs
 
     def _post_join(self, **kwargs):
@@ -430,7 +428,7 @@ class KJoinerThreading(KJoiner):
                 batches {list} -- list of Batch instances
                 outpath {str} -- path to output file
         """
-        if 1 == self.threads:
+        if self.threads == 1:
             super().join(batches, outpath, self.doSort)
         else:
             self.__parallel_join(batches, outpath)
