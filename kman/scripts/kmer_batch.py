@@ -35,7 +35,7 @@ Generate batches of k-mers from a fasta file.
         "output",
         type=str,
         help="""
-        Path to output folder, which must be emtpy or non-existent.""",
+        Path to output folder, which must be empty or non-existent.""",
     )
     parser.add_argument(
         "k",

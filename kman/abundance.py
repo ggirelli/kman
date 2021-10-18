@@ -84,7 +84,7 @@ class AbundanceVector(AbundanceVectorBase):
     abundance counts.
 
     Variables:
-            __data {dict} -- stores abundance vectores
+            __data {dict} -- stores abundance vectors
     """
 
     """{ref:{strand:np.ndarray}}"""

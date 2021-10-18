@@ -261,7 +261,7 @@ class FastaBatcher(BatcherThreading):
 
     Variables:
             _doReverseComplement {bool} -- whether to batch also the reverse
-                                           complement fo the sequences
+                                           complement of the sequences
     """
 
     class MODE(Enum):
@@ -395,7 +395,7 @@ class FastaRecordBatcher(BatcherThreading):
 
     Variables:
             _doReverseComplement {bool} -- whether to batch also the reverse
-                                           complement fo the sequences
+                                           complement of the sequences
     """
 
     _doReverseComplement = False

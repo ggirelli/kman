@@ -221,7 +221,7 @@ class KJoiner(object):
         Retains only unique records.
 
         Arguments:
-                OH {io.TextIOWrapper} -- buffer to ouptut file
+                OH {io.TextIOWrapper} -- buffer to output file
                 headers {list} -- list of headers with seq
                 seq {str} -- sequence
         """
