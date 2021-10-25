@@ -117,14 +117,14 @@ class AbundanceVector(AbundanceVectorBase):
         :type k: int
         :param replace: allow for replacement of non-zero counts, defaults to False
         :type replace: bool
+        :raises AssertionError: if replace is disallowed and count is not 0
         """
         super().add_count(ref, strand, pos, count, k, replace)
         self.add_ref(ref, strand, pos + 1)
-        if not replace:
-            assert_msg = "cannot update a non-zero count without replace."
-            assert_msg += " (%s, %s, %d, %d)" % (ref, strand, pos, count)
-            if self.__data[ref][strand][pos] != 0:
-                raise AssertionError(assert_msg)
+        if not replace and self.__data[ref][strand][pos] != 0:
+            raise AssertionError(
+                "can't update non-zero count w/o replace: {ref},{strand},{pos},{count}"
+            )
         self.__data[ref][strand][pos] = count
 
     def add_ref(self, ref: str, strand: str, size: int) -> None:
@@ -154,6 +154,7 @@ class AbundanceVector(AbundanceVectorBase):
 
         :param dirpath: output directory path
         :type dirpath: str
+        :raises AssertionError: if input path is a file
         """
         dirpath = os.path.splitext(dirpath)[0]
         if os.path.isfile(dirpath):
@@ -205,6 +206,7 @@ class AbundanceVectorLocal(AbundanceVectorBase):
         :type k: int
         :param replace: allow for replacement of non-zero counts, defaults to False
         :type replace: bool
+        :raises AssertionError: if abundances are non-zero without replace
         """
         super().add_count(ref, strand, pos, count, k, replace)
         self.add_ref(ref, strand, pos)
@@ -264,6 +266,7 @@ class AbundanceVectorLocal(AbundanceVectorBase):
 
         :param dirpath: output directory path
         :type dirpath: str
+        :raises AssertionError: if input path is a file
         """
         dirpath = os.path.splitext(dirpath)[0]
         if os.path.isfile(dirpath):

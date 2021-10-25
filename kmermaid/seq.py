@@ -189,6 +189,7 @@ class Sequence(om.Sequence):
         :type batchSize: int
         :yield: k-mer batch generator
         :rtype: Iterator[Sequence]
+        :raises AssertionError: if batchSize is lower than 1
         """
         if batchSize < 1:
             raise AssertionError
@@ -357,6 +358,7 @@ class Sequence(om.Sequence):
         :type rc: bool
         :yield: k-mer iterator
         :rtype: Iterator[Kmer]
+        :raises AssertionError: if batchSize is < 1
         """
         if batchSize < 1:
             raise AssertionError

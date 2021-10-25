@@ -51,3 +51,8 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry.scripts]
 "kmer" = "kmermaid.scripts.kmer:main"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = ["tests"]

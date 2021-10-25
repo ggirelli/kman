@@ -233,6 +233,7 @@ class BatcherThreading(BatcherBase):
         :type new_collection: List[Batch]
         :param mode: feed mode, defaults to FEED_MODE.FLOW
         :type mode: BatcherThreading
+        :raises AssertionError: if any batch type is not compatible
         """
         if any(b.type != self.type for b in new_collection):
             raise AssertionError
@@ -265,6 +266,7 @@ class BatcherThreading(BatcherBase):
         :type reSort: bool
         :return: list of read batches
         :rtype: List[Batch]
+        :raises AssertionError: if input is not a folder
         """
         if not os.path.isdir(dirPath):
             raise AssertionError
@@ -445,11 +447,13 @@ class FastaBatcher(BatcherThreading):
         :type k: int
         :param feedMode: feeding mode, defaults to BatcherThreading.FEED_MODE.APPEND
         :type feedMode: BatcherThreading.FEED_MODE, optional
+        :raises AssertionError: if input is not a file
+        :raises AssertionError: if k is lower than or equal to 1
         """
         if not os.path.isfile(fasta):
-            raise AssertionError
+            raise AssertionError(f"input file not found: {fasta}")
         if k <= 1:
-            raise AssertionError
+            raise AssertionError(f"k must be >= 1, got {k} instead.")
 
         FH = gzip.open(fasta, "rt") if fasta.endswith(".gz") else open(fasta, "r+")
         if self._mode == self.MODE.KMERS:

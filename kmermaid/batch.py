@@ -56,6 +56,7 @@ class Batch(object):
         :type tmpDir: str
         :param size: records per batch, defaults to 1
         :type size: int
+        :raises AssertionError: if size is lower than 1
         """
         super().__init__()
         if size < 1:
@@ -212,10 +213,9 @@ class Batch(object):
 
         :param record
         :type record: Any
+        :raises AssertionError: if record type is not compatible
         """
-        if (
-            type(record) != self.type
-        ):
+        if type(record) != self.type:
             raise AssertionError(f"record must be {self.type}, not {type(record)}.")
 
     def add(self, record: Any):
@@ -227,6 +227,7 @@ class Batch(object):
 
         :param record
         :type record: Any
+        :raises AssertionError: if batch is full or locally stored
         """
         if self.is_full():
             raise AssertionError("this batch is full.")
@@ -439,6 +440,7 @@ class BatchAppendable(Batch):
 
         :param record: record
         :type record: Any
+        :raises AssertionError: if batch is full
         """
         if self.is_full():
             raise AssertionError("this batch is full.")
