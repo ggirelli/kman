@@ -4,20 +4,22 @@
 @description: methods for batching
 """
 
-from enum import Enum
 import gzip
 import itertools
-from kman.batch import Batch
-from kman.seq import KMer, Sequence
-from kman.io import SmartFastaParser
-from joblib import Parallel, delayed  # type: ignore
 import logging
 import multiprocessing as mp
-import oligo_melting as om  # type: ignore
 import os
 import tempfile
-from tqdm import tqdm  # type: ignore
+from enum import Enum
 from typing import List, Type, Union
+
+import oligo_melting as om  # type: ignore
+from joblib import Parallel, delayed  # type: ignore
+from tqdm import tqdm  # type: ignore
+
+from kman.batch import Batch
+from kman.io import SmartFastaParser
+from kman.seq import KMer, Sequence
 
 
 class BatcherBase(object):

@@ -3,14 +3,16 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import click  # type: ignore
-from kman.const import CONTEXT_SETTINGS
-from kman.batcher import BatcherThreading, FastaBatcher
-from kman.io import copy_batches, input_file_exists, set_tempdir
-from kman.scripts import arguments as args
 import logging
 import os
 import tempfile
+
+import click  # type: ignore
+
+from kman.batcher import BatcherThreading, FastaBatcher
+from kman.const import CONTEXT_SETTINGS
+from kman.io import copy_batches, input_file_exists, set_tempdir
+from kman.scripts import arguments as args
 
 
 @click.command(

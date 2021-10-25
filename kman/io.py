@@ -5,13 +5,15 @@
 """
 
 import gzip
-from kman.batch import Batch
 import io
 import os
 import shutil
 import tempfile
-from tqdm import tqdm  # type: ignore
 from typing import List, Tuple
+
+from tqdm import tqdm  # type: ignore
+
+from kman.batch import Batch
 
 
 class SmartFastaParser(object):

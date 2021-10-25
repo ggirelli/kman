@@ -3,8 +3,9 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from kman.seq import KMer, Sequence, SequenceCoords, SequenceCount
 import oligo_melting as om  # type: ignore
+
+from kman.seq import KMer, Sequence, SequenceCoords, SequenceCount
 
 
 def test_SequenceCoords_start():

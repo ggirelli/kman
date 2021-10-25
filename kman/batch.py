@@ -4,14 +4,16 @@
 @description: batch systems
 """
 
-from Bio.SeqIO.FastaIO import SimpleFastaParser  # type: ignore
 import gzip
-from kman.seq import KMer
-from kman.io import SmartFastaParser
 import os
 import tempfile
 import time
 from typing import IO
+
+from Bio.SeqIO.FastaIO import SimpleFastaParser  # type: ignore
+
+from kman.io import SmartFastaParser
+from kman.seq import KMer
 
 
 class Batch(object):

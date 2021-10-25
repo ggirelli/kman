@@ -5,12 +5,13 @@
 """
 
 import gzip
-import h5py  # type: ignore
-import numpy as np  # type: ignore
 import os
 import tempfile
-from tqdm import tqdm  # type: ignore
 from typing import Dict, Set
+
+import h5py  # type: ignore
+import numpy as np  # type: ignore
+from tqdm import tqdm  # type: ignore
 
 
 class AbundanceVectorBase(object):

@@ -4,18 +4,20 @@
 @description: methods for batch joining
 """
 
+import multiprocessing as mp
+import tempfile
 from enum import Enum
 from heapq import merge
 from itertools import chain
+
+import numpy as np  # type: ignore
 from joblib import Parallel, delayed  # type: ignore
+from tqdm import tqdm  # type: ignore
+
 from kman.abundance import AbundanceVector, AbundanceVectorLocal
 from kman.batch import Batch, BatchAppendable
 from kman.batcher import BatcherThreading
 from kman.seq import SequenceCoords, SequenceCount
-import multiprocessing as mp
-import numpy as np  # type: ignore
-import tempfile
-from tqdm import tqdm  # type: ignore
 
 
 class Crawler(object):

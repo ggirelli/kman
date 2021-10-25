@@ -4,11 +4,12 @@
 @description: sequence management systems
 """
 
-from enum import Enum, unique
 import logging
-import oligo_melting as om  # type: ignore
 import re
+from enum import Enum, unique
 from typing import Iterator, List
+
+import oligo_melting as om  # type: ignore
 
 
 class SequenceCoords(object):

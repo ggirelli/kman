@@ -3,8 +3,9 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from kman.batch import Batch, BatchAppendable
 import os
+
+from kman.batch import Batch, BatchAppendable
 
 
 def test_Batch():

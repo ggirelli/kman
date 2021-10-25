@@ -3,15 +3,17 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import click  # type: ignore
-from kman.const import CONTEXT_SETTINGS
-from kman.batcher import BatcherThreading, FastaBatcher, load_batches
-from kman.io import input_file_exists, set_tempdir
-from kman.join import KJoinerThreading
-from kman.scripts import arguments as args
 import logging
 import tempfile
 from typing import Optional
+
+import click  # type: ignore
+
+from kman.batcher import BatcherThreading, FastaBatcher, load_batches
+from kman.const import CONTEXT_SETTINGS
+from kman.io import input_file_exists, set_tempdir
+from kman.join import KJoinerThreading
+from kman.scripts import arguments as args
 
 
 @click.command(

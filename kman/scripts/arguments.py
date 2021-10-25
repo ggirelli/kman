@@ -3,10 +3,12 @@
 @contact: gigi.ga90@gmail.com
 """
 
+import tempfile
+
 import click  # type: ignore
+
 from kman.batcher import BatcherThreading, FastaBatcher
 from kman.join import KJoiner
-import tempfile
 
 
 def input_path() -> click.Argument:
