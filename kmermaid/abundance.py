@@ -97,8 +97,7 @@ class AbundanceVector(AbundanceVectorBase):
             __data {dict} -- stores abundance vectors
     """
 
-    """{ref:{strand:np.ndarray}}"""
-    __data: Dict[str, Dict[str, np.ndarray]] = {}
+    __data: Dict[str, Dict[str, np.ndarray]] = {}  # {ref:{strand:np.ndarray}}
 
     def add_count(
         self, ref: str, strand: str, pos: int, count: int, k: int, replace: bool = False
