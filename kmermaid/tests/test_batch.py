@@ -15,13 +15,13 @@ def test_Batch():
     b.fread = "__str__"
     b.keyAttr = "__str__"
 
-    assert 5 == b.size
-    assert 5 == b.remaining
-    assert 0 == b.current_size
+    assert b.size == 5
+    assert b.remaining == 5
+    assert b.current_size == 0
     assert b.is_written is False
     assert str == b.type
-    assert 0 == len(list(b.record_gen()))
-    assert 0 == len(list(b.sorted()))
+    assert len(list(b.record_gen())) == 0
+    assert len(list(b.sorted())) == 0
 
     assert isinstance(b.check_record("test"), type(None))
     try:
@@ -39,11 +39,11 @@ def test_Batch():
         assert False, "record type must be tested when adding it"
 
     b.add("First record")
-    assert 1 == b.current_size
+    assert b.current_size == 1
     assert b.size - b.current_size == b.remaining
 
     b.add_all(["Second record", "Third record"])
-    assert 3 == b.current_size
+    assert b.current_size == 3
     assert b.size - b.current_size == b.remaining
 
     b.add_all(["4th record"])
@@ -54,15 +54,15 @@ def test_Batch():
     assert os.path.isfile(b.tmp)
     assert b.is_written
     assert b.collection == [None]
-    assert 4 == b.current_size
-    assert 4 == len(list(b.record_gen()))
+    assert b.current_size == 4
+    assert len(list(b.record_gen())) == 4
 
     b2 = b.from_file(b.tmp, str, False)
     b2.isFasta = False
     b2.fwrite = "__str__"
     b2.fread = "__str__"
     b2.keyAttr = "__str__"
-    assert 4 == b2.current_size
+    assert b2.current_size == 4
     assert b.tmp == b2.tmp
     assert b2.is_written
 
@@ -71,7 +71,7 @@ def test_Batch():
     assert rec1 == rec2
 
     b.unwrite()
-    assert 4 == b.current_size
+    assert b.current_size == 4
     assert not b.is_written
 
     b.add("5th record")
@@ -88,9 +88,9 @@ def test_Batch():
 
     b.write()
     b.reset()
-    assert 0 == b.current_size
-    assert 5 == b.size
-    assert 5 == b.remaining
+    assert b.current_size == 0
+    assert b.size == 5
+    assert b.remaining == 5
     assert not b.is_written
     assert not os.path.isfile(b.tmp)
 
@@ -102,13 +102,13 @@ def test_BatchAppendable():
     b.fread = "__str__"
     b.keyAttr = "__str__"
 
-    assert 5 == b.size
-    assert 5 == b.remaining
-    assert 0 == b.current_size
+    assert b.size == 5
+    assert b.remaining == 5
+    assert b.current_size == 0
     assert b.is_written is True
     assert str == b.type
-    assert 0 == len(list(b.record_gen()))
-    assert 0 == len(list(b.sorted()))
+    assert len(list(b.record_gen())) == 0
+    assert len(list(b.sorted())) == 0
 
     assert isinstance(b.check_record("test"), type(None))
     try:
@@ -126,11 +126,11 @@ def test_BatchAppendable():
         assert False, "record type must be tested when adding it"
 
     b.add("First record")
-    assert 1 == b.current_size
+    assert b.current_size == 1
     assert b.size - b.current_size == b.remaining
 
     b.add_all(["Second record", "Third record"])
-    assert 3 == b.current_size
+    assert b.current_size == 3
     assert b.size - b.current_size == b.remaining
 
     b.add_all(["4th record"])
@@ -142,7 +142,7 @@ def test_BatchAppendable():
     b2.fwrite = "__str__"
     b2.fread = "__str__"
     b2.keyAttr = "__str__"
-    assert 4 == b2.current_size
+    assert b2.current_size == 4
     assert b.tmp == b2.tmp
     assert b2.is_written
 
@@ -151,7 +151,7 @@ def test_BatchAppendable():
     assert rec1 == rec2
 
     b.unwrite()
-    assert 4 == b.current_size
+    assert b.current_size == 4
     assert b.is_written
 
     b.add("5th record")
@@ -168,8 +168,8 @@ def test_BatchAppendable():
 
     b.write()
     b.reset()
-    assert 0 == b.current_size
-    assert 5 == b.size
-    assert 5 == b.remaining
+    assert b.current_size == 0
+    assert b.size == 5
+    assert b.remaining == 5
     assert b.is_written
     assert not os.path.isfile(b.tmp)
