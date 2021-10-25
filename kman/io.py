@@ -118,8 +118,14 @@ class SmartFastaParser(object):
         return SmartFastaParser(path).parse()
 
 
-def set_tempdir(path: str, create_if_needed: bool = False) -> None:
-    """Set a new temporary directory. Creates it at the specified path if not found."""
-    if not os.path.isdir(path):
+def set_tempdir(path: str, create: bool = True) -> None:
+    if not os.path.isdir(path) and create:
         os.makedirs(path, exist_ok=True)
+    else:
+        raise AssertionError(f"folder not found: {path}")
     tempfile.tempdir = path
+
+
+def input_file_exists(path: str) -> None:
+    if not os.path.isfile(path):
+        raise AssertionError(f"input file not found: {path}")

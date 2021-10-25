@@ -5,8 +5,8 @@
 
 import click  # type: ignore
 from kman.const import CONTEXT_SETTINGS
-from kman.batcher import BatcherThreading, FastaBatcher
-from kman.io import set_tempdir
+from kman.batcher import BatcherThreading, FastaBatcher, load_batches
+from kman.io import input_file_exists, set_tempdir
 from kman.join import KJoinerThreading
 import logging
 import os
@@ -98,23 +98,22 @@ def run(
     tmp: str = tempfile.gettempdir(),
     re_sort: bool = False,
 ) -> None:
-    if not os.path.isfile(input_path):
-        raise AssertionError(f"input file not found: {input_path}")
+    input_file_exists(input_path)
     set_tempdir(tmp)
 
     if previous_batches is not None:
-        if not os.path.isdir(previous_batches) or len(os.listdir(previous_batches)) > 0:
-            raise AssertionError(
-                f"folder with previous batches empty or not found: {previous_batches}"
-            )
-        logging.info(f"Loading previous batches from '{previous_batches}'...")
-        batches = BatcherThreading.from_files(previous_batches, threads, reSort=re_sort)
+        batches = load_batches(previous_batches, threads, re_sort)
     else:
-        batcher = FastaBatcher(size=batch_size, threads=threads)
-        batcher.mode = FastaBatcher.FEED_MODE[scan_mode]
-        batcher.doReverseComplement = reverse
-        batcher.do(input_path, k, BatcherThreading.FEED_MODE[batch_mode])
-        batches = batcher.collection
+        batches = (
+            FastaBatcher(
+                scan_mode=FastaBatcher.MODE[scan_mode],
+                reverse=reverse,
+                size=batch_size,
+                threads=threads,
+            )
+            .do(input_path, k, BatcherThreading.FEED_MODE[batch_mode])
+            .collection
+        )
 
     joiner = KJoinerThreading()
     joiner.threads = threads

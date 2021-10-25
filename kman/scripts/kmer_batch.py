@@ -6,13 +6,15 @@
 import click  # type: ignore
 import gzip
 from kman.const import CONTEXT_SETTINGS
+from kman.batch import Batch
 from kman.batcher import BatcherThreading, FastaBatcher
-from kman.io import set_tempdir
+from kman.io import input_file_exists, set_tempdir
 import logging
 import os
 import shutil
 import tempfile
 from tqdm import tqdm  # type: ignore
+from typing import List
 
 
 @click.command(
@@ -97,32 +99,37 @@ def run(
     tmp: str = tempfile.gettempdir(),
     compress: bool = False,
 ) -> None:
-    if not os.path.isfile(input_path):
-        raise AssertionError(f"input file not found: {input_path}")
+    input_file_exists(input_path)
     if os.path.isdir(output_path) and len(os.listdir(output_path)) == 0:
         raise AssertionError("output folder must be empty or non-existent.")
     set_tempdir(tmp)
-
-    batcher = FastaBatcher(size=batch_size, threads=threads)
-    batcher.mode = FastaBatcher.FEED_MODE[scan_mode]
-    batcher.doReverseComplement = reverse
-    batcher.do(input_path, k, BatcherThreading.FEED_MODE[batch_mode])
     os.makedirs(output_path, exist_ok=True)
 
     try:
-        run_batching(batcher, output_path, compress)
+        copy_batches(
+            FastaBatcher(
+                scan_mode=FastaBatcher.MODE[scan_mode],
+                reverse=reverse,
+                size=batch_size,
+                threads=threads,
+            )
+            .do(input_path, k, BatcherThreading.FEED_MODE[batch_mode])
+            .collection,
+            output_path,
+            compress,
+        )
     except IOError as e:
         logging.error(f"Unable to write to output directory '{output_path}'.\n{e}")
 
     logging.info("That's all! :smiley:")
 
 
-def run_batching(
-    batcher: FastaBatcher, output_path: str, compress: bool = False
+def copy_batches(
+    batches: List[Batch], output_path: str, compress: bool = False
 ) -> None:
     batch_list = tqdm(
-        (batch for batch in batcher.collection if os.path.isfile(batch.tmp)),
-        total=len(batcher.collection),
+        (batch for batch in batches if os.path.isfile(batch.tmp)),
+        total=len(batches),
     )
     for current_batch in batch_list:
         if compress:

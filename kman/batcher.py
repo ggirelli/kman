@@ -17,7 +17,7 @@ import oligo_melting as om  # type: ignore
 import os
 import tempfile
 from tqdm import tqdm  # type: ignore
-from typing import Type, Union
+from typing import List, Optional, Type, Union
 
 
 class BatcherBase(object):
@@ -42,7 +42,7 @@ class BatcherBase(object):
 
     _tmpH = None
     _tmp = None
-    _batches = None
+    _batches: List[Batch]
     __size = DEFAULT_BATCH_SIZE
     _type: Type[Sequence] = KMer
     __natype = DEFAULT_NATYPE
@@ -63,8 +63,7 @@ class BatcherBase(object):
             self._tmp = tmp.name
         elif tmp is not None:
             self._tmp = tmp
-        if self._batches is None:
-            self._batches = [Batch.from_batcher(self)]
+        self._batches = [Batch.from_batcher(self)]
 
     @property
     def size(self) -> int:
@@ -268,10 +267,18 @@ class FastaBatcher(BatcherThreading):
         KMERS = 1
         RECORDS = 2
 
-    _doReverseComplement = False
-    _mode = MODE.KMERS
+    _doReverseComplement: bool
+    _mode: MODE
 
-    def __init__(self, threads=1, size=None, natype=None, tmp=None):
+    def __init__(
+        self,
+        scan_mode: MODE = MODE.KMERS,
+        reverse: bool = False,
+        threads=1,
+        size=None,
+        natype=None,
+        tmp=None,
+    ):
         """Initialize FastaBatcher instance.
 
         A parent batcher class can be specified, whose attributes are inherited.
@@ -284,6 +291,8 @@ class FastaBatcher(BatcherThreading):
                 tmp {tempfile.TemporaryDirectory}
         """
         super().__init__(threads, size, natype, tmp)
+        self.mode = scan_mode
+        self.doReverseComplement = reverse
 
     @property
     def mode(self):
@@ -488,3 +497,29 @@ class FastaRecordBatcher(BatcherThreading):
         )
         batcher._doReverseComplement = parent.doReverseComplement
         return batcher
+
+
+def load_batches(
+    previous_batches: str, threads: int = 1, re_sort: bool = False
+) -> List[Batch]:
+    """Load previously generated batches.
+
+    Args:
+        previous_batches (str): path to folder containing previous batches.
+        threads (int, optional): threads for parallelization. Defaults to 1.
+        re_sort (bool, optional): whether to re-sort batches. Defaults to False.
+
+    Raises:
+        AssertionError: input folder must exist and be non-empty
+
+    Returns:
+        List[Batch]: previous batches.
+    """
+    if not os.path.isdir(previous_batches) or len(os.listdir(previous_batches)) > 0:
+        raise AssertionError(
+            f"folder with previous batches empty or not found: {previous_batches}"
+        )
+    logging.info(f"Loading previous batches from '{previous_batches}'...")
+    return BatcherThreading.from_files(
+        previous_batches, threads, reSort=re_sort
+    ).collection
