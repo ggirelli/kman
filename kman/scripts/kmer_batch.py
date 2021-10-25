@@ -69,15 +69,15 @@ def run(
 
 
 def prepare_run(input_path: str, output_path: str, tmp: str) -> None:
-    """Prepare output folders and checks input before running.
+    """Prepare output folders and check input before running.
 
-    Args:
-        input_path (str): path to input FASTA
-        output_path (str): path to output folder
-        tmp (str): path to temporary folder
-
-    Raises:
-        AssertionError: if output folder exists or is not empty
+    :param input_path: path to input FASTA.
+    :type input_path: str
+    :param output_path: path to output folder.
+    :type output_path: str
+    :param tmp: path to temporary folder.
+    :type tmp: str
+    :raises AssertionError: if output folder exists or is not empty.
     """
     input_file_exists(input_path)
     if os.path.isdir(output_path) and len(os.listdir(output_path)) == 0:

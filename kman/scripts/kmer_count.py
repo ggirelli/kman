@@ -94,15 +94,16 @@ def run(
 def prep_joiner(
     joiner: KJoinerThreading, n_batches: int, threads: int = 1
 ) -> KJoinerThreading:
-    """Instantiate k-way joiner for counting.
+    """Instantiate k-joiner for counting.
 
-    Args:
-        joiner (KJoinerThreading): pre-instantiated joiner.
-        n_batches (int): number of input batches.
-        threads (int, optional): for parallelization. Defaults to 1.
-
-    Returns:
-        KJoinerThreading
+    :param joiner: pre-instantiated joiner.
+    :type joiner: KJoinerThreading
+    :param n_batches: number of batches in input.
+    :type n_batches: int
+    :param threads: for parallelization, defaults to 1
+    :type threads: int
+    :return: updated joiner instance.
+    :rtype: KJoinerThreading
     """
     joiner.threads = threads
     joiner.batch_size = max(2, int(n_batches / threads))

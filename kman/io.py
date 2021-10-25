@@ -9,7 +9,7 @@ import io
 import os
 import shutil
 import tempfile
-from typing import List, Tuple
+from typing import Iterator, List, Optional, Tuple
 
 from tqdm import tqdm  # type: ignore
 
@@ -82,7 +82,7 @@ class SmartFastaParser(object):
             line = self.__FH.readline()
         return lines
 
-    def parse(self):
+    def parse(self) -> Iterator[Tuple[str, str]]:
         """Iterate over Fasta records as string tuples.
 
         For each record a tuple of two strings is returned, the FASTA title
@@ -91,8 +91,13 @@ class SmartFastaParser(object):
         identifier (the first word) and comment or description.
 
         Additionally, keep the Fasta handler open only when strictly necessary.
+
+        :raises ValueError: when fasta does not pass format check
+        :yield: (header, sequence)
+        :rtype: Tuple[str, str]
         """
         self.__reopen()
+        line: Optional[str] = None
         line, parsable = self.__skip_blank_and_comments()
         assert parsable, "premature end of file or empty file"
 
@@ -141,10 +146,12 @@ def copy_batches(
 ) -> None:
     """Copy generated batches to output folder.
 
-    Args:
-        batches (List[Batch]): generated batches.
-        output_path (str): path to output folder.
-        compress (bool, optional): gzip batches. Defaults to False.
+    :param batches: generated batches.
+    :type batches: List[Batch]
+    :param output_path: path to output folder.
+    :type output_path: str
+    :param compress: gzip batches, defaults to False
+    :type compress: bool
     """
     batch_list = tqdm(
         (batch for batch in batches if os.path.isfile(batch.tmp)),

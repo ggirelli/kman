@@ -7,7 +7,7 @@
 import logging
 import re
 from enum import Enum, unique
-from typing import Iterator, List
+from typing import Iterator, List, Tuple, Type
 
 import oligo_melting as om  # type: ignore
 
@@ -85,14 +85,13 @@ class SequenceCoords(object):
         )
 
     @staticmethod
-    def rev(strand):
-        """Provides reverse strand.
+    def rev(strand: "SequenceCoords".STRAND) -> "SequenceCoords".STRAND:
+        """Provide reverse strand.
 
-        Arguments:
-                strand {SequenceCoords.STRAND} -- current strand
-
-        Returns:
-                Sequence.Coords.STRAND -- reverse strand
+        :param strand: current strand
+        :type strand: SequenceCoords.STRAND
+        :return: reverse strand
+        :rtype: SequenceCoords.STRAND
         """
         if SequenceCoords.STRAND.PLUS == strand:
             return SequenceCoords.STRAND.MINUS
@@ -103,22 +102,27 @@ class SequenceCoords(object):
         return "%s:%d-%d:%s" % (self.ref, self.start, self.end, self.strand.label)
 
     @staticmethod
-    def from_str(s):
-        """Builds a SequenceCoords object from a string.
+    def from_str(s: str) -> "SequenceCoords":
+        """Build a SequenceCoords object from a string.
 
-        Arguments:
-                s {str} -- input string
-
-        Returns:
-                SequenceCoords
+        :param s: input string
+        :type s: str
+        :return: class instance
+        :rtype: SequenceCoords
+        :raises AssertionError: if string is not compatible with SequenceCoords.regexp
         """
-        ref, start, end, strand = SequenceCoords.regexp.search(s).group(
-            "ref", "start", "end", "strand"
+        regexp_match = SequenceCoords.regexp.search(s)
+        if regexp_match is None:
+            raise AssertionError(f"incompatible string: {s}")
+        ref, start, end, strand = regexp_match.group("ref", "start", "end", "strand")
+        return SequenceCoords(
+            ref,
+            int(start),
+            int(end),
+            list(SequenceCoords.STRAND)[
+                [x.label for x in list(SequenceCoords.STRAND)].index(strand)
+            ],
         )
-        strand = list(SequenceCoords.STRAND)[
-            [x.label for x in list(SequenceCoords.STRAND)].index(strand)
-        ]
-        return SequenceCoords(ref, int(start), int(end), strand)
 
 
 class Sequence(om.Sequence):
@@ -144,18 +148,19 @@ class Sequence(om.Sequence):
     def __eq__(self, other):
         return super().__eq__(other)
 
-    def kmers(self, k):
+    def kmers(self, k: int) -> Iterator[Type["Sequence"]]:
         """Extract k-mers from Sequence.
-        Args:
-                k {int} -- substring length
-        Returns:
-                generator -- kmer generator
+
+        :param k: k-mer length.
+        :type k: int
+        :return: Iterator.
+        :rtype: Iterator[Type[Sequence]]
         """
         return self.kmerator(
             self.text, k, self.natype, self.name, rc=self.doReverseComplement
         )
 
-    def batches(self, k, batchSize):
+    def batches(self, k: int, batchSize: int) -> Iterator[Tuple[str, int]]:
         """Split the sequence in batches ready to be fed to the kmerator.
 
         This is useful when parallelizing, due to the fact that generators
@@ -163,24 +168,24 @@ class Sequence(om.Sequence):
         back-end. Instead, pass the sequences to the processes and run kmerator
         there.
 
-        Arguments:
-                seq {string} -- sequence to be batched
-                k {int} -- length of substrings for kmerator
-                batchSize {int} -- number of kmers per batch
+        :param k: k-mer length
+        :type k: int
+        :param batchSize: records per batch
+        :type batchSize: int
+        :return: iterator of (header, sequence)
+        :rtype: Iterator[Tuple[str, int]]
         """
         return self.batcher(self.text, k, batchSize)
 
-    def kmers_batched(self, k, batchSize=1):
+    def kmers_batched(self, k: int, batchSize: int = 1) -> Iterator[Type["Sequence"]]:
         """Extract batches of k-mers from Sequence.
 
-        Arguments:
-                k {int} -- substring length
-
-        Keyword Arguments:
-                batchSize {number} -- number of k-mers per batch (default: {1})
-
-        Returns:
-                generator -- k-mer batch generator
+        :param k: k-mer length
+        :type k: int
+        :param batchSize: records per batch, defaults to 1
+        :type batchSize: int
+        :return: k-mer batch generator
+        :rtype: Iterator[Type[Sequence]]
         """
         assert batchSize >= 1
         if batchSize == 1:
@@ -228,18 +233,33 @@ class Sequence(om.Sequence):
         )
 
     @staticmethod
-    def yield_kmers(seq, prefix, k, t, offset, strand, rc):
-        """Extract k-mers from seq.
+    def yield_kmers(
+        seq: str,
+        prefix: str,
+        k: int,
+        t: om.NATYPES,
+        offset: int,
+        strand: SequenceCoords.STRAND,
+        rc: bool,
+    ) -> Iterator["KMer"]:
+        """Extract k-mers from sequence.
 
-        Arguments:
-                seq {string} -- input sequence
-                k {int} -- substring length
-                t {om.NATYPES} -- nucleic acid type
-
-        Keyword Arguments:
-                prefix {str} -- reference record name (default: {"ref"})
-                offset {number} -- if this is a batch, current location for
-                                   shifting (default: {0})
+        :param seq: sequence
+        :type seq: str
+        :param prefix: reference record name
+        :type prefix: str
+        :param k: k-mer length
+        :type k: int
+        :param t: nucleic acid type
+        :type t: om.NATYPES
+        :param offset: current location for shifting
+        :type offset: int
+        :param strand: strandedness
+        :type strand: SequenceCoords.STRAND
+        :param rc: perform reverse-complement operation
+        :type rc: bool
+        :yield: k-mers
+        :rtype: Iterator[Kmer]
         """
         seq = seq.upper()
         kmer_yielder = (
@@ -260,24 +280,37 @@ class Sequence(om.Sequence):
 
     @staticmethod
     def kmerator(
-        seq, k, t, prefix="ref", offset=0, strand=SequenceCoords.STRAND.PLUS, rc=False
-    ):
-        """Extract k-mers from seq.
+        seq: str,
+        k: int,
+        t: om.NATYPES,
+        prefix: str = "ref",
+        offset: "int" = 0,
+        strand: SequenceCoords.STRAND = SequenceCoords.STRAND.PLUS,
+        rc=False,
+    ) -> Iterator["KMer"]:
+        """Extract k-mers from sequence.
 
-        Arguments:
-                seq {string} -- input sequence
-                k {int} -- substring length
-                t {om.NATYPES} -- nucleic acid type
-
-        Keyword Arguments:
-                prefix {str} -- reference record name (default: {"ref"})
-                offset {number} -- if this is a batch, current location for
-                                   shifting (default: {0})
+        :param seq: sequence
+        :type seq: str
+        :param k: k-mer length
+        :type k: int
+        :param t: nucleic acid type
+        :type t: om.NATYPES
+        :param prefix: reference record name, defaults to "ref"
+        :type prefix: str
+        :param offset: current location for shifting, defaults to 0
+        :type offset: int
+        :param strand: strandedness, defaults to SequenceCoords.STRAND.PLUS
+        :type strand: SequenceCoords.STRAND
+        :param rc: do perform reverse-complement operation, defaults to False
+        :type rc: bool
+        :return: k-mer iterator
+        :rtype: Iterator[KMer]
         """
         return iter(Sequence.yield_kmers(seq, prefix, k, t, offset, strand, rc))
 
     @staticmethod
-    def batcher(seq, k, batchSize):
+    def batcher(seq: str, k: int, batchSize: int) -> Iterator[Tuple[str, int]]:
         """Split the sequence in batches ready to be fed to the kmerator.
 
         This is useful when parallelizing, due to the fact that generators
@@ -285,12 +318,15 @@ class Sequence(om.Sequence):
         back-end. Instead, pass the sequences to the processes and run kmerator
         there.
 
-        Arguments:
-                seq {string} -- sequence to be batched
-                k {int} -- length of substrings for kmerator
-                batchSize {int} -- number of kmers per batch
+        :param seq: sequence
+        :type seq: str
+        :param k: k-mer length
+        :type k: int
+        :param batchSize: records per batch
+        :type batchSize: int
+        :yield: k-mer sequence and start position
+        :rtype: Iterator[Tuple[str, int]]
         """
-
         start = 0
         while start < len(seq) - k + 1:
             end = min(len(seq), start + batchSize)
@@ -298,26 +334,33 @@ class Sequence(om.Sequence):
             start += batchSize - k + 1
 
     @staticmethod
-    def kmerator_batched(seq, k, t, batchSize=1, prefix="ref", rc=False):
-        """Extract batches of k-mers from seq.
+    def kmerator_batched(
+        seq: str, k: int, t: om.NATYPES, batchSize: int = 1, prefix="ref", rc=False
+    ) -> Iterator["KMer"]:
+        """Extract batches of k-mers from sequence.
 
-        Arguments:
-                seq {string} -- input sequence
-                k {int} -- substring length
-                t {om.NATYPES} -- nucleic acid type
-
-        Keyword Arguments:
-                batchSize {number} -- number of kmers per batch (default: {1})
-                prefix {str} -- reference record name (default: {"ref"})
-
-        Returns:
-                generator -- k-mer batch generator
+        :param seq: sequence
+        :type seq: str
+        :param k: k-mer length
+        :type k: int
+        :param t: nucleic acid type
+        :type t: om.NATYPES
+        :param batchSize: records per batch, defaults to 1
+        :type batchSize: int
+        :param prefix: reference record name, defaults to "ref"
+        :type prefix: str
+        :param rc: do perform reverse-complement, defaults to False
+        :type rc: bool
+        :return: k-mer iterator
+        :rtype: Iterator[Kmer]
+        :yield: k-mer batches
+        :rtype: Iterator[Kmer]
         """
         assert batchSize >= 1
         if batchSize == 1:
             return Sequence.kmerator(seq, k, t, prefix, rc=rc)
         for (seq2beKmered, i) in Sequence.batcher(seq, k, batchSize):
-            yield Sequence.kmerator(seq2beKmered, k, t, prefix, offset=i, rc=rc)
+            yield from Sequence.kmerator(seq2beKmered, k, t, prefix, offset=i, rc=rc)
 
 
 class KMer(Sequence):
@@ -360,17 +403,15 @@ class KMer(Sequence):
         return super().__eq__(other)
 
     @staticmethod
-    def from_fasta(record, t=om.NATYPES.DNA):
+    def from_fasta(record: Tuple[str, str], t: om.NATYPES = om.NATYPES.DNA) -> "KMer":
         """Reads a KMer from a Fasta record.
 
-        Arguments:
-                record {tuple} -- (header, seq)
-
-        Keyword Arguments:
-                t {om.NATYPES} -- nucleic acid type (default: {om.NATYPES.DNA})
-
-        Returns:
-                KMer
+        :param record: (header, sequence)
+        :type record: Tuple[str, str]
+        :param t: nucleic acid type, defaults to om.NATYPES.DNA
+        :type t: om.NATYPES
+        :return: k-mer instance
+        :rtype: KMer
         """
         coords = SequenceCoords.from_str(record[0])
         return KMer(
@@ -381,21 +422,25 @@ class KMer(Sequence):
     def from_file(*args, **kwargs):
         return KMer.from_fasta(*args, **kwargs)
 
-    def as_fasta(self):
-        """Fasta-like representation."""
+    def as_fasta(self) -> str:
+        """Fasta-like representation.
+
+        :return: fasta format
+        :rtype: str
+        """
         return ">%s\n%s\n" % (self.header, self.seq)
 
     def __repr__(self):
         return "%s\t%s" % (self.header, self.seq)
 
-    def is_ab_checked(self):
+    def is_ab_checked(self) -> bool:
         """Check if AB is fully respected.
 
         Checks if the KMer sequence respects the AB. I.e., it does not contain
         any foreign characters.
 
-        Returns:
-                bool -- whether AB is respected.
+        :return: if alphabet is respected
+        :rtype: bool
         """
         return all(c in self.ab[0] for c in set(self.text))
 
@@ -428,17 +473,15 @@ class SequenceCount(Sequence):
         return self.text
 
     @staticmethod
-    def from_text(line, t=om.NATYPES.DNA):
-        """Reads a KMer from a Fasta record.
+    def from_text(line: str, t: om.NATYPES = om.NATYPES.DNA) -> "SequenceCount":
+        """Reads a KMer from a FASTA record.
 
-        Arguments:
-                record {tuple} -- (header, seq)
-
-        Keyword Arguments:
-                t {om.NATYPES} -- nucleic acid type (default: {om.NATYPES.DNA})
-
-        Returns:
-                KMer
+        :param line: sequence
+        :type line: str
+        :param t: nucleic acid type, defaults to om.NATYPES.DNA
+        :type t: om.NATYPES, optional
+        :return: class instance
+        :rtype: SequenceCount
         """
         seq, headers = line.strip().split("\t")
         return SequenceCount(seq, headers.split(" "), t)

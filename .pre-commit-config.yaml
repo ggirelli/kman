@@ -25,8 +25,9 @@ repos:
         name: flake8-1
         args: ["--count", "--select=E9,F63,F7,F82", "--show-source", "--statistics"]
     -   id: flake8
+        additional_dependencies: [darglint]
         name: flake8-2
-        args: ["--count", "--max-complexity=5", "--max-line-length=88", "--ignore=E203", "--statistics"]
+        args: ["--count", "--max-complexity=5", "--max-line-length=88", "--ignore=E203", "--statistics", "--docstring-style=SPHINX", "--strictness=short"]
 -   repo: https://github.com/codespell-project/codespell
     rev: v2.1.0
     hooks:
@@ -38,6 +39,7 @@ repos:
     rev: 5.8.0
     hooks:
     -   id: isort
+        args: ["--multi-line=3", "--tc"]
         name: isort (python)
     -   id: isort
         name: isort (cython)
