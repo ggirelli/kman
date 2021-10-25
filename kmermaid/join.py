@@ -599,5 +599,5 @@ class SeqCountBatcher(BatcherThreading):
 
     @staticmethod
     def from_parent(parent, n_batches):
-        assert KJoinerThreading == type(parent)
+        assert type(parent) == KJoinerThreading
         return SeqCountBatcher(n_batches, parent.threads, tmp=parent.tmp)

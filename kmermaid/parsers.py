@@ -28,13 +28,13 @@ class SmartFastaParser(object):
 
     def __init__(self, FH):
         super(SmartFastaParser, self).__init__()
-        if str == type(FH):
+        if type(FH) == str:
             if FH.endswith(".gz"):
                 self.__compressed = True
                 self.__FH = gzip.open(FH, "rt")
             else:
                 self.__FH = open(FH, "r+")
-        elif io.TextIOWrapper == type(FH):
+        elif type(FH) == io.TextIOWrapper:
             self.__FH = FH
             if self.__FH.name.endswith(".gz"):
                 self.__compressed = True
