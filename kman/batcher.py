@@ -11,7 +11,7 @@ import multiprocessing as mp
 import os
 import tempfile
 from enum import Enum
-from typing import List, Type, Union
+from typing import List, Optional, Type, Union
 
 import oligo_melting as om  # type: ignore
 from joblib import Parallel, delayed  # type: ignore
@@ -20,6 +20,8 @@ from tqdm import tqdm  # type: ignore
 from kman.batch import Batch
 from kman.io import SmartFastaParser
 from kman.seq import KMer, Sequence
+
+TMP_DIR = tempfile.TemporaryDirectory
 
 
 class BatcherBase(object):
@@ -32,7 +34,7 @@ class BatcherBase(object):
     Variables:
             DEFAULT_BATCH_SIZE {int} -- default batch size
             DEFAULT_NATYPE {om.NATYPES} -- default nucleic acid type
-            _tmp {tempfile.TemporaryDirectory}
+            _tmp {TMP_DIR}
             _batches {list} -- list of Batch instances
             __size {int} -- batch size
             _type {type} -- batched record type
@@ -42,29 +44,36 @@ class BatcherBase(object):
     DEFAULT_BATCH_SIZE = int(1e6)
     DEFAULT_NATYPE = om.NATYPES.DNA
 
-    _tmpH = None
-    _tmp = None
+    _tmpH: TMP_DIR
+    _tmp: str
     _batches: List[Batch]
     __size = DEFAULT_BATCH_SIZE
     _type: Type[Sequence] = KMer
     __natype = DEFAULT_NATYPE
 
-    def __init__(self, size=None, natype=None, tmp=None):
+    def __init__(
+        self,
+        size: int,
+        natype: Optional[om.NATYPES] = None,
+        tmp: Optional[Union[TMP_DIR, str]] = None,
+    ):
         """Initializes BatcherBase.
 
-        Keyword Arguments:
-                size {int} -- batching size (default: {None})
-                natype {om.NATYPES} -- nucleic acid type
-                tmp {tempfile.TemporaryDirectory}
+        Args:
+            size (int): batching size. Defaults to None.
+            natype (om.NATYPES, optional): nucleic acid type. Defaults to None.
+            tmp (TMP_DIR, optional): temporary directory. Defaults to None.
         """
         super().__init__()
         self.size = size
         self.natype = natype
-        if tempfile.TemporaryDirectory == type(tmp):
+        if isinstance(tmp, TMP_DIR):
             self._tmpH = tmp
             self._tmp = tmp.name
-        elif tmp is not None:
+        elif isinstance(tmp, str):
             self._tmp = tmp
+        else:
+            self._tmp = tempfile.gettempdir()
         self._batches = [Batch.from_batcher(self)]
 
     @property
@@ -86,7 +95,7 @@ class BatcherBase(object):
         return self.__natype
 
     @natype.setter
-    def natype(self, natype: Union[om.NATYPES, None]) -> None:
+    def natype(self, natype: Optional[om.NATYPES]) -> None:
         if natype is not None:
             assert natype in om.NATYPES
             self.__natype = natype
@@ -98,7 +107,7 @@ class BatcherBase(object):
     @property
     def tmp(self):
         if self._tmp is None:
-            self._tmpH = tempfile.TemporaryDirectory(prefix="kmanBatch")
+            self._tmpH = TMP_DIR(prefix="kmanBatch")
             self._tmp = self._tmpH.name
         return self._tmp
 
@@ -179,7 +188,7 @@ class BatcherThreading(BatcherBase):
                                     (default: {1})
                 size {int} -- batching size (default: {None})
                 natype {om.NATYPES} -- nucleic acid type
-                tmp {tempfile.TemporaryDirectory}
+                tmp {TMP_DIR}
         """
         super().__init__(size, natype, tmp)
         self.threads = threads
@@ -290,7 +299,7 @@ class FastaBatcher(BatcherThreading):
                                  (default: {1})
                 size {int} -- batch size (overridden by parent.size)
                 natype {om.NATYPES} -- nucleic acid type
-                tmp {tempfile.TemporaryDirectory}
+                tmp {TMP_DIR}
         """
         super().__init__(threads, size, natype, tmp)
         self.mode = scan_mode
@@ -419,7 +428,7 @@ class FastaRecordBatcher(BatcherThreading):
                                  (default: {1})
                 size {int} -- batch size (overridden by parent.size)
                 natype {om.NATYPES} -- nucleic acid type
-                tmp {tempfile.TemporaryDirectory}
+                tmp {TMP_DIR}
         """
         super().__init__(threads, size, natype, tmp)
 
