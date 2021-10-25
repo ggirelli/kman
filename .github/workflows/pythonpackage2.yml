@@ -68,5 +68,5 @@ jobs:
       run: |
         poetry check
         source .venv/bin/activate
-        safety check --full-report
+        # safety check --full-report
         bandit -ll --recursive kman/
