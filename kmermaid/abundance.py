@@ -26,9 +26,6 @@ class AbundanceVectorBase(object):
 
     _ks: Set[int] = set()
 
-    def __init__(self):
-        super().__init__()
-
     def check_length(self, k: int) -> None:
         """Check that sequence length is compatible.
 
@@ -102,9 +99,6 @@ class AbundanceVector(AbundanceVectorBase):
 
     """{ref:{strand:np.ndarray}}"""
     __data: Dict[str, Dict[str, np.ndarray]] = {}
-
-    def __init__(self):
-        super().__init__()
 
     def add_count(
         self, ref: str, strand: str, pos: int, count: int, k: int, replace: bool = False

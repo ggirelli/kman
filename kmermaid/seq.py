@@ -145,9 +145,6 @@ class Sequence(om.Sequence):
         assert isinstance(t, om.NATYPES), "sequence type must be from om.NATYPES"
         super().__init__(seq, t, name)
 
-    def __eq__(self, other):
-        return super().__eq__(other)
-
     def kmers(self, k: int) -> Iterator["Sequence"]:
         """Extract k-mers from Sequence.
 
