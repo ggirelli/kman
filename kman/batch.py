@@ -248,11 +248,17 @@ class Batch(object):
         :rtype: List[Any]
         """
         if doSort:
-            return [getattr(r, self.fwrite)() for r in self.sorted()
-                        if not type(None) == type(r)]
+            return [
+                getattr(r, self.fwrite)()
+                for r in self.sorted()
+                if not type(None) == type(r)
+            ]
         else:
-            return [getattr(r, self.fwrite)() for r in self.record_gen()
-                        if type(None) != type(r)]
+            return [
+                getattr(r, self.fwrite)()
+                for r in self.record_gen()
+                if type(None) != type(r)
+            ]
 
     def write(self, doSort: bool = False, force: bool = False) -> None:
         """Write batch to disk.
