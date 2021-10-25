@@ -193,15 +193,14 @@ class Sequence(om.Sequence):
         if batchSize == 1:
             yield self.kmers(k)
         else:
-            for x in self.kmerator_batched(
+            yield from self.kmerator_batched(
                 self.text,
                 k,
                 self.natype,
                 batchSize,
                 self.name,
                 rc=self.doReverseComplement,
-            ):
-                yield x
+            )
 
     @staticmethod
     def __kmer_yielding(i, seq, prefix, k, t, offset, strand, rc) -> Iterator["KMer"]:
