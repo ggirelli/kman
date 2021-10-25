@@ -69,8 +69,7 @@ class SmartFastaParser(object):
                 break
             if line[0] == ">":
                 break
-            else:
-                self.__pos = self.__FH.tell()
+            self.__pos = self.__FH.tell()
             lines.append(line.rstrip())
             line = self.__FH.readline()
         return lines
