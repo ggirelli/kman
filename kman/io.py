@@ -10,7 +10,7 @@ import io
 import os
 import shutil
 import tempfile
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
 from typing import List, Tuple
 
 
