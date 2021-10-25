@@ -48,9 +48,6 @@ class Crawler(object):
     verbose = True
     desc = ""
 
-    def __init__(self):
-        super().__init__()
-
     @staticmethod
     def count_records(batches: List[Batch]) -> int:
         """Count records across batches.
