@@ -554,4 +554,4 @@ class BatchAppendable(Batch):
         self._remaining = self.size
 
     def unwrite(self, *args, **kwargs):
-        raise NotImplementedError()
+        """Do nothing for Appendable batches."""
