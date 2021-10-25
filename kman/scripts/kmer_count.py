@@ -149,15 +149,33 @@ def run(
             .collection
         )
 
-    joiner = KJoinerThreading(KJoiner.MODE[count_mode], KJoiner.MEMORY[memory_mode])
-    joiner.threads = threads
-
-    joiner.batch_size = max(2, int(len(batches) / threads))
-    rlimits = resource.getrlimit(resource.RLIMIT_NOFILE)
-    joiner.batch_size = min(joiner.batch_size, rlimits[1])
-    resource.setrlimit(
-        resource.RLIMIT_NOFILE, (max(rlimits[0], joiner.batch_size), rlimits[1])
+    get_joiner(count_mode, memory_mode, len(batches), threads).join(
+        batches, output_path
     )
 
-    joiner.join(batches, output_path)
     logging.info("That's all! :smiley:")
+
+
+def get_joiner(
+    count_mode: str, memory_mode: str, n_batches: int, threads: int = 1
+) -> KJoinerThreading:
+    """Instantiate k-way joiner for counting.
+
+    Args:
+        count_mode (str): how to count record occurrences.
+        memory_mode (str): how to store data.
+        n_batches (int): number of input batches.
+        threads (int, optional): for parallelization. Defaults to 1.
+
+    Returns:
+        KJoinerThreading
+    """
+    joiner = KJoinerThreading(KJoiner.MODE[count_mode], KJoiner.MEMORY[memory_mode])
+    joiner.threads = threads
+    joiner.batch_size = max(2, int(n_batches / threads))
+    rlim_min, rlim_max = resource.getrlimit(resource.RLIMIT_NOFILE)
+    joiner.batch_size = min(joiner.batch_size, rlim_max)
+    resource.setrlimit(
+        resource.RLIMIT_NOFILE, (max(rlim_min, joiner.batch_size), rlim_max)
+    )
+    return joiner

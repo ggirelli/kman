@@ -115,9 +115,22 @@ def run(
             .collection
         )
 
-    joiner = KJoinerThreading()
-    joiner.threads = threads
-    joiner.batch_size = max(2, int(len(batches) / threads))
-    joiner.join(batches, output_path)
+    get_joiner(len(batches), threads).join(batches, output_path)
 
     logging.info("That's all! :smiley:")
+
+
+def get_joiner(n_batches: int, threads: int = 1) -> KJoinerThreading:
+    """Instantiate k-way joiner for uniquing.
+
+    Args:
+        n_batches (int): number of input batches.
+        threads (int, optional): for parallelization. Defaults to 1.
+
+    Returns:
+        KJoinerThreading
+    """
+    joiner = KJoinerThreading()
+    joiner.threads = threads
+    joiner.batch_size = max(2, int(n_batches / threads))
+    return joiner

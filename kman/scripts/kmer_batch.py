@@ -99,11 +99,7 @@ def run(
     tmp: str = tempfile.gettempdir(),
     compress: bool = False,
 ) -> None:
-    input_file_exists(input_path)
-    if os.path.isdir(output_path) and len(os.listdir(output_path)) == 0:
-        raise AssertionError("output folder must be empty or non-existent.")
-    set_tempdir(tmp)
-    os.makedirs(output_path, exist_ok=True)
+    prepare_run(input_path, output_path, tmp)
 
     try:
         copy_batches(
@@ -124,9 +120,34 @@ def run(
     logging.info("That's all! :smiley:")
 
 
+def prepare_run(input_path: str, output_path: str, tmp: str) -> None:
+    """Prepare output folders and checks input before running.
+
+    Args:
+        input_path (str): path to input FASTA
+        output_path (str): path to output folder
+        tmp (str): path to temporary folder
+
+    Raises:
+        AssertionError: if output folder exists or is not empty
+    """
+    input_file_exists(input_path)
+    if os.path.isdir(output_path) and len(os.listdir(output_path)) == 0:
+        raise AssertionError("output folder must be empty or non-existent.")
+    set_tempdir(tmp)
+    os.makedirs(output_path, exist_ok=True)
+
+
 def copy_batches(
     batches: List[Batch], output_path: str, compress: bool = False
 ) -> None:
+    """Copy generated batches to output folder.
+
+    Args:
+        batches (List[Batch]): generated batches.
+        output_path (str): path to output folder.
+        compress (bool, optional): gzip batches. Defaults to False.
+    """
     batch_list = tqdm(
         (batch for batch in batches if os.path.isfile(batch.tmp)),
         total=len(batches),
