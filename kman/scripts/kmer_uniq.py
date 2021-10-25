@@ -103,7 +103,10 @@ def run(
     set_tempdir(tmp)
 
     if previous_batches is not None:
-        if not os.path.isdir(previous_batches) or 0 < len(os.listdir(previous_batches)):
+        if (
+            not os.path.isdir(previous_batches)
+            or len(os.listdir(previous_batches)) > 0
+        ):
             raise AssertionError(
                 f"folder with previous batches empty or not found: {previous_batches}"
             )

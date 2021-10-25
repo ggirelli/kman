@@ -99,7 +99,7 @@ def run(
 ) -> None:
     if not os.path.isfile(input_path):
         raise AssertionError(f"input file not found: {input_path}")
-    if os.path.isdir(output_path) and 0 == len(os.listdir(output_path)):
+    if os.path.isdir(output_path) and len(os.listdir(output_path)) == 0:
         raise AssertionError("output folder must be empty or non-existent.")
     set_tempdir(tmp)
 
@@ -124,8 +124,8 @@ def run_batching(
         (batch for batch in batcher.collection if os.path.isfile(batch.tmp)),
         total=len(batcher.collection),
     )
-    if compress:
-        for current_batch in batch_list:
+    for current_batch in batch_list:
+        if compress:
             with gzip.open(
                 os.path.join(output_path, f"{os.path.basename(current_batch.tmp)}.gz"),
                 "wb",
@@ -133,6 +133,5 @@ def run_batching(
                 with open(current_batch.tmp, "rb") as IH:
                     for line in IH:
                         OH.write(line)
-    else:
-        for current_batch in batch_list:
+        else:
             shutil.copy(current_batch.tmp, output_path)
