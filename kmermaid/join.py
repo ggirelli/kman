@@ -86,7 +86,7 @@ class Crawler(object):
             generators = [
                 ((str(r.header), str(r.seq)) for r in b.record_gen(self.doSmart))
                 for b in batches
-                if not type(None) == type(b)
+                if not type(None) is type(b)
             ]
 
         yield from merge(*generators, key=lambda x: x[1])
@@ -405,7 +405,7 @@ class KJoinerThreading(KJoiner):
 
     @doSort.setter
     def doSort(self, doSort):
-        assert type(True) == type(doSort)
+        assert type(True) is type(doSort)
         self.__doSort = doSort
 
     @property
@@ -515,7 +515,7 @@ class SeqCountBatcher(BatcherThreading):
 
     @doSort.setter
     def doSort(self, doSort):
-        assert type(True) == type(doSort)
+        assert type(True) is type(doSort)
         self.__doSort = doSort
 
     def do(self, recordBatch: List[Batch]) -> None:
@@ -595,5 +595,5 @@ class SeqCountBatcher(BatcherThreading):
 
     @staticmethod
     def from_parent(parent, n_batches):
-        assert type(parent) == KJoinerThreading
+        assert type(parent) is KJoinerThreading
         return SeqCountBatcher(n_batches, parent.threads, tmp=parent.tmp)
