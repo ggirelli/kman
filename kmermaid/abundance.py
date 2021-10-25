@@ -161,7 +161,7 @@ class AbundanceVector(AbundanceVectorBase):
             raise AssertionError
         print('Writing output in "%s"' % dirpath)
         os.makedirs(dirpath, exist_ok=True)
-        for ref in self.__data.keys():
+        for ref in self.__data:
             for strand in self.__data[ref].keys():
                 fname = "%s___%s.gz" % (ref, strand)
                 with gzip.open(os.path.join(dirpath, fname), "wb") as OH:
