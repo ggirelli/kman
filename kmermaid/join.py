@@ -182,6 +182,8 @@ class KJoiner:
         :type mode: MODE
         :param memory: storage mode, defaults to None
         :type memory: MEMORY
+        :raises AssertionError: if joining mode is unrecognized
+        :raises AssertionError: if storage mode is unrecognized
         """
         super().__init__()
         if mode is not None:
@@ -336,6 +338,7 @@ class KJoiner:
         :type outpath: str
         :return: keyword arguments for join functions
         :rtype: Dict[str, Any]
+        :raises AssertionError: ifmemory mode is neither NORMAL nor LOCAL
         """
         if not self.mode.name.startswith("VEC_"):
             return dict(OH=open(outpath, "w+"))
