@@ -49,9 +49,12 @@ class SequenceCoords(object):
 
     def __init__(self, ref, start, end, strand=STRAND.PLUS):
         super(SequenceCoords, self).__init__()
-        assert start >= 0
-        assert end >= 0
-        assert isinstance(strand, self.STRAND)
+        if start < 0:
+            raise AssertionError
+        if end < 0:
+            raise AssertionError
+        if not isinstance(strand, self.STRAND):
+            raise AssertionError
         self._ref = ref
         self._start = start
         self._end = end
@@ -142,7 +145,8 @@ class Sequence(om.Sequence):
     doReverseComplement = False
 
     def __init__(self, seq, t, name=None):
-        assert isinstance(t, om.NATYPES), "sequence type must be from om.NATYPES"
+        if not isinstance(t, om.NATYPES):
+            raise AssertionError("sequence type must be from om.NATYPES")
         super().__init__(seq, t, name)
 
     def kmers(self, k: int) -> Iterator["Sequence"]:
@@ -186,7 +190,8 @@ class Sequence(om.Sequence):
         :yield: k-mer batch generator
         :rtype: Iterator[Sequence]
         """
-        assert batchSize >= 1
+        if batchSize < 1:
+            raise AssertionError
         if batchSize == 1:
             yield self.kmers(k)
         else:
@@ -353,7 +358,8 @@ class Sequence(om.Sequence):
         :yield: k-mer iterator
         :rtype: Iterator[Kmer]
         """
-        assert batchSize >= 1
+        if batchSize < 1:
+            raise AssertionError
         if batchSize == 1:
             yield Sequence.kmerator(seq, k, t, prefix, rc=rc)
         for (seq2beKmered, i) in Sequence.batcher(seq, k, batchSize):
@@ -378,7 +384,8 @@ class KMer(Sequence):
         t=om.NATYPES.DNA,
         strand=SequenceCoords.STRAND.PLUS,
     ):
-        assert len(seq) == end - start
+        if len(seq) != end - start:
+            raise AssertionError
         super().__init__(seq, t)
         self._coords = SequenceCoords(chrom, start, end, strand)
 
@@ -458,7 +465,8 @@ class SequenceCount(Sequence):
 
     def __init__(self, seq, headers, t=om.NATYPES.DNA):
         super().__init__(seq, t)
-        assert all(isinstance(h, str) for h in headers)
+        if not all(isinstance(h, str) for h in headers):
+            raise AssertionError
         self.__headers = headers
 
     @property

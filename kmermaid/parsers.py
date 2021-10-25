@@ -39,7 +39,8 @@ class SmartFastaParser(object):
             if self.__FH.name.endswith(".gz"):
                 self.__compressed = True
         else:
-            assert False, "type error."
+            if not False:
+                raise AssertionError("type error.")
 
     def __reopen(self):
         """Re-open the buffer and seek the last recorded position."""
@@ -92,7 +93,8 @@ class SmartFastaParser(object):
         self.__reopen()
         line: Optional[str] = None
         line, parsable = self.__skip_blank_and_comments()
-        assert parsable, "premature end of file or empty file"
+        if not parsable:
+            raise AssertionError("premature end of file or empty file")
 
         while True:
             self.__reopen()
@@ -114,7 +116,8 @@ class SmartFastaParser(object):
 
             line = None
 
-        assert False, "Should not reach this line"
+        if not False:
+            raise AssertionError("Should not reach this line")
 
     @staticmethod
     def parse_file(path):
