@@ -4,14 +4,16 @@
 @description: batch systems
 """
 
-from Bio.SeqIO.FastaIO import SimpleFastaParser  # type: ignore
 import gzip
-from kman.seq import KMer
-from kman.io import SmartFastaParser
 import os
 import tempfile
 import time
-from typing import IO
+from typing import IO, Any, Iterator, List, Type
+
+from Bio.SeqIO.FastaIO import SimpleFastaParser  # type: ignore
+
+from kman.parsers import SmartFastaParser
+from kman.seq import KMer
 
 
 class Batch(object):
@@ -39,21 +41,21 @@ class Batch(object):
     _keyAttr = "seq"
 
     _written = False
-    _i = 0
+    _i: int = 0
     _tmp_dir = None
     _tmp = None
     isFasta = True
     suffix = ".fa"
 
-    def __init__(self, t, tmpDir, size=1):
-        """Initialize a Batch.
+    def __init__(self, t: Type, tmpDir: str, size: int = 1):
+        """Initialize Batch
 
-        Arguments:
-                t {class} -- record type
-                tmpDir {str} -- path to temporary directory
-
-        Keyword Arguments:
-                size {number} -- batch size (default: {1})
+        :param t: record type
+        :type t: Type
+        :param tmpDir: path to temporary folder
+        :type tmpDir: str
+        :param size: records per batch, defaults to 1
+        :type size: int
         """
         super().__init__()
         assert size >= 1
@@ -68,7 +70,7 @@ class Batch(object):
         return self._written
 
     @property
-    def current_size(self):
+    def current_size(self) -> int:
         return self._i
 
     @property
@@ -102,8 +104,12 @@ class Batch(object):
         return self._tmp
 
     @property
-    def info(self):
-        """Prints Batch information in a readable format."""
+    def info(self) -> str:
+        """Prints Batch information in a readable format.
+
+        :return: batch information
+        :rtype: str
+        """
         info = "%s\ntype: %s\nsize: %d" % (self.tmp, self.type, self.size)
         info += "\ni: %d\nremaining: %d" % (self.current_size, self.remaining)
         info += "\nwritten: %r\n" % self.is_written
@@ -139,16 +145,13 @@ class Batch(object):
         assert hasattr(self.type, f)
         self._fwrite = f
 
-    def sorted(self, smart=False):
-        """Generator of sorted records.
+    def sorted(self, smart: bool = False) -> Any:
+        """Generator of sorted record.
 
-        Keyword Arguments:
-                keyAttr {str} -- attribute key for sorting (default: {"seq"})
-                smart {bool} -- use smarter IO (open only when needed) parser when
-                                available. Might cause higher overhead.
-
-        Returns:
-                generator
+        :param smart: use smarter IO, defaults to False
+        :type smart: bool
+        :return: generator
+        :rtype: Any
         """
         if self.isFasta:
             return sorted(
@@ -166,15 +169,13 @@ class Batch(object):
             for line in TH:
                 yield getattr(self.__type, self.fread)(line)
 
-    def _record_gen_from_file(self, smart=False):
-        """Generator of records, reading from file.
+    def _record_gen_from_file(self, smart: bool = False) -> Any:
+        """Generator of records, read from file.
 
-        Keyword Arguments:
-                smart {bool} -- use smarter IO (open only when needed) parser when
-                                available. Might cause higher overhead.
-
-        Yields:
-                record
+        :param smart: use smarter IO, defaults to False
+        :type smart: bool
+        :yield: record
+        :rtype: Any
         """
         if self.tmp.endswith(".gz"):
             TH = gzip.open(self.tmp, "rt")
@@ -184,15 +185,13 @@ class Batch(object):
         if not TH.closed:
             TH.close()
 
-    def record_gen(self, smart=False):
+    def record_gen(self, smart: bool = False) -> Any:
         """Generator of records.
 
-        Keyword Arguments:
-                smart {bool} -- use smarter IO (open only when needed) parser when
-                                available. Might cause higher overhead.
-
-        Yields:
-                record
+        :param smart: use smarter IO, defaults to False
+        :type smart: bool
+        :yield: record
+        :rtype: Any
         """
         if self.is_written:
             yield from self._record_gen_from_file(smart)
@@ -201,21 +200,25 @@ class Batch(object):
                 if type(None) != type(record):
                     yield record
 
-    def check_record(self, record):
-        """Check that record type matches the Batch."""
+    def check_record(self, record: Any) -> None:
+        """Check that record type matches the Batch.
+
+        :param record
+        :type record: Any
+        """
         assert (
             type(record) == self.type
         ), f"record must be {self.type}, not {type(record)}."
 
-    def add(self, record):
+    def add(self, record: Any):
         """Add a record to the current batch.
 
         Does not work if the batch is full. Also, the record type must match the
         batch type. Automatically selects whether to append in memory or to the
         temporary file (if self.is_appending).
 
-        Arguments:
-                record -- record of the same type as self.type
+        :param record
+        :type record: Any
         """
         assert not self.is_full(), "this batch is full."
         assert not self.is_written, "this batch has been stored locally."
@@ -225,69 +228,79 @@ class Batch(object):
         self._remaining -= 1
 
     def add_all(self, recordGen):
-        """Adds all records from a generator to the current Batch.
+        """Add all records from a generator to the current Batch.
 
-        Arguments:
-                recordGen {generator} -- record generator
+        :param recordGen: record generator
+        :type recordGen: [type]
         """
         for record in recordGen:
             self.add(record)
 
-    def to_write(self, doSort=False):
+    def to_write(self, doSort: bool = False) -> List[Any]:
         """Generator of writeable records.
 
         Generator function that converts batch records into writeable ones.
 
-        Keyword Arguments:
-                doSort {bool} -- whether to sort when writing (default: {False})
+        :param doSort: sort when writing, defaults to False
+        :type doSort: bool
+        :return: output status
+        :rtype: List[Any]
         """
         if doSort:
-            return (
+            return [
                 getattr(r, self.fwrite)()
                 for r in self.sorted()
                 if not type(None) == type(r)
-            )
+            ]
         else:
-            return (
+            return [
                 getattr(r, self.fwrite)()
                 for r in self.record_gen()
                 if type(None) != type(r)
-            )
+            ]
 
-    def write(self, doSort=False, force=False):
-        """Writes the batch to file.
+    def write(self, doSort: bool = False, force: bool = False) -> None:
+        """Write batch to disk.
 
-        Keyword Arguments:
-                doSort {bool} -- whether to sort when writing (default: {False})
-                force {bool} -- force overwriting, useful with doSort.
-                                (default: {False})
+        :param doSort: sort while writing, defaults to False
+        :type doSort: bool
+        :param force: overwrite, defaults to False
+        :type force: bool
         """
         if not self.is_written or force:
-            output = self.to_write(doSort)
-            output = [x + "\n" if not x.endswith("\n") else x for x in output]
-            output = "".join(output)
+            output = [
+                x + "\n" if not x.endswith("\n") else x for x in self.to_write(doSort)
+            ]
             with open(self.tmp, "w+") as TH:
-                TH.write(output)
-            self.__records = None
+                TH.write("".join(output))
+            self.__records = [None]
             self._written = True
 
     @staticmethod
-    def from_file(path, t=KMer, isFasta=True, smart=False, reSort=False):
-        """Generate a Batch from a file.
+    def from_file(
+        path: str,
+        t: Type = KMer,
+        isFasta: bool = True,
+        smart: bool = False,
+        reSort: bool = False,
+    ) -> "Batch":
+        """Generate a batch from a file.
 
-        Used to link an existing file to a Batch.
+        Used to link an existing file to a Batch instance.
 
-        Arguments:
-                path {str} -- path to previously generated batch
-
-        Keyword Arguments:
-                t {class} -- record type (default: {KMer})
-                isFasta {bool} -- whether the input is a fasta (default: {False})
-                smart {bool} -- use smarter IO (open only when needed) parser when
-                                available. Might cause higher overhead.
-                reSort {bool} -- sort the written batch. (default: {False})
+        :param path: path to previously generated batch.
+        :type path: str
+        :param t: record type, defaults to KMer
+        :type t: Type
+        :param isFasta: if the input is FASTA, defaults to True
+        :type isFasta: bool
+        :param smart: use smarter IO, defaults to False
+        :type smart: bool
+        :param reSort: re-sort while reading, defaults to False
+        :type reSort: bool
+        :return: read batch
+        :rtype: Batch
         """
-
         if isFasta:
             FH = gzip.open(path, "rt") if path.endswith(".gz") else open(path, "r+")
             if smart:
@@ -312,19 +325,24 @@ class Batch(object):
         return batch
 
     @staticmethod
-    def from_batcher(batcher, size=1):
-        """Initialize a Batch.
+    def from_batcher(
+        batch_type: Type, size: int = 1, tmp: str = tempfile.gettempdir()
+    ) -> "Batch":
+        """Initialize a batch using a Batcher for default values.
 
-        Uses a Batcher to set default values.
-
-        Arguments:
-                batcher {BatcherBase} -- parent batcher.
-                size {number} -- batch size. Uses the largest between provided here
-                                 and batcher.size. (default: {1})
+        :param batch_type: type of items in the batch
+        :type batch_type: Type
+        :param size: records per batch, defaults to 1
+        :type size: int
+        :param tmp: path to temporary folder
+        :type tmp: str
+        :return: new empty batch
+        :rtype: Batch
+        :raises AssertionError: if size is 0 or negative.
         """
-        assert batcher.size >= 1
-        size = max(int(batcher.size), size)
-        return Batch(batcher.type, batcher.tmp, size)
+        if size < 1:
+            raise AssertionError(f"size cannot be 0 or negative: {size}")
+        return Batch(batch_type, tmp, size)
 
     def reset(self):
         """Reset the batch.
@@ -338,8 +356,12 @@ class Batch(object):
         self._remaining = self.size
         self.__records = [None] * self.__size
 
-    def is_full(self):
-        """Whether the Batch collection is full."""
+    def is_full(self) -> bool:
+        """Whether the Batch collection is full.
+
+        :return: filling status
+        :rtype: bool
+        """
         return self.remaining == 0
 
     def unwrite(self):
@@ -362,49 +384,51 @@ class BatchAppendable(Batch):
     cannot be resized. After full size is reached, a new Batch should be created
     """
 
-    def __init__(self, t, tmpDir, size=1):
-        """Initialize a Batch.
+    def __init__(self, t: Type, tmpDir: str, size: int = 1):
+        """Initialize an appenable Batch.
 
-        Arguments:
-                t {class} -- record type
-                tmpDir {str} -- path to temporary directory
-
-        Keyword Arguments:
-                size {number} -- batch size (default: {1})
+        :param t: record type
+        :type t: Type
+        :param tmpDir: temporary folder
+        :type tmpDir: str
+        :param size: records per batch, defaults to 1
+        :type size: int
         """
         super().__init__(t, tmpDir, size)
         self._written = True
 
     @property
-    def info(self):
-        """Prints Batch information in a readable format."""
+    def info(self) -> str:
+        """Prints Batch information in a readable format.
+
+        :return: batch details
+        :rtype: str
+        """
         info = "%s\ntype: %s\nsize: %d" % (self.tmp, self.type, self.size)
         info += "\ni: %d\nremaining: %d" % (self.current_size, self.remaining)
         info += "\nappending: True\n"
         return info
 
-    def record_gen(self, smart=False):
+    def record_gen(self, smart: bool = False):
         """Generator of records.
 
-        Keyword Arguments:
-                smart {bool} -- use smarter IO (open only when needed) parser when
-                                available. Might cause higher overhead.
-
-        Yields:
-                record
+        :param smart: use smarter IO, defaults to False
+        :type smart: bool
+        :yield: record
+        :rtype: Iterator[Any]
         """
         if self.current_size != 0:
             yield from self._record_gen_from_file(smart)
 
-    def add(self, record):
+    def add(self, record: Any) -> None:
         """Add a record to the current batch.
 
         Does not work if the batch is full. Also, the record type must match the
         batch type. Automatically selects whether to append in memory or to the
         temporary file (if self.is_appending).
 
-        Arguments:
-                record -- record of the same type as self.type
+        :param record: record
+        :type record: Any
         """
         assert not self.is_full(), "this batch is full."
         super().check_record(record)
@@ -416,44 +440,58 @@ class BatchAppendable(Batch):
         self._i += 1
         self._remaining -= 1
 
-    def add_all(self, recordGen):
-        """Adds all records from a generator to the current Batch.
+    def add_all(self, recordGen: Iterator[Any]) -> None:
+        """Add recirds from a generator to the current Batch
 
-        Arguments:
-                recordGen {generator} -- record generator
+        :param recordGen: record generator
+        :type recordGen: Iterator[Any]
         """
         for record in recordGen:
             self.add(record)
 
-    def write(self, doSort=False):
-        """Writes the batch to file.
+    def write(self, doSort: bool = False, force: bool = False) -> None:
+        """Write batch to disk, only if re-sorting is needed.
 
-        Does something only if doSort is True.
-
-        Keyword Arguments:
-                doSort {bool} -- whether to sort when writing (default: {False})
+        :param doSort: sort while writing, defaults to False
+        :type doSort: bool
+        :param force: overwrite
+        :type force: bool
         """
-        if doSort:
-            output = self.to_write(doSort)
-            output = [x + "\n" if not x.endswith("\n") else x for x in output]
-            output = "".join(output)
+        if (not self.is_written or force) and doSort:
             with open(self.tmp, "w+") as TH:
-                TH.write(output)
+                TH.write(
+                    "".join(
+                        [
+                            x + "\n" if not x.endswith("\n") else x
+                            for x in self.to_write(doSort)
+                        ]
+                    )
+                )
 
     @staticmethod
-    def from_file(path, t=KMer, isFasta=True, smart=False):
+    def from_file(
+        path: str,
+        t: Type = KMer,
+        isFasta: bool = True,
+        smart: bool = False,
+        reSort: bool = False,
+    ) -> "Batch":
         """Generate a Batch from a file.
 
-        Used to link an existing file to a Batch.
+        Used to link an existing file to a Batch instance.
 
-        Arguments:
-                path {str} -- path to previously generated batch
-
-        Keyword Arguments:
-                t {class} -- record type (default: {KMer})
-                isFasta {bool} -- whether the input is a fasta (default: {False})
-                smart {bool} -- use smarter IO (open only when needed) parser when
-                                available. Might cause higher overhead.
+        :param path: path to previously generated batch
+        :type path: str
+        :param t: record type, defaults to KMer
+        :type t: Type
+        :param isFasta: is input FASYA, defaults to True
+        :type isFasta: bool
+        :param smart: use smarter IO, defaults to False
+        :type smart: bool
+        :param reSort: re-sort while reading, defaults to False
+        :type reSort: bool
+        :return: Batch
+        :rtype: Batch
         """
 
         if isFasta:
@@ -476,19 +514,24 @@ class BatchAppendable(Batch):
         return batch
 
     @staticmethod
-    def from_batcher(batcher, size=1):
-        """Initialize a Batch.
+    def from_batcher(
+        batch_type: Type, size: int = 1, tmp: str = tempfile.gettempdir()
+    ) -> "Batch":
+        """Initialize a batch using a Batcher for default values.
 
-        Uses a Batcher to set default values.
-
-        Arguments:
-                batcher {BatcherBase} -- parent batcher.
-                size {number} -- batch size. Uses the largest between provided here
-                                 and batcher.size. (default: {1})
+        :param batch_type: type of items in the batch
+        :type batch_type: Type
+        :param size: records per batch, defaults to 1
+        :type size: int
+        :param tmp: path to temporary folder
+        :type tmp: str
+        :return: new empty batch
+        :rtype: Batch
+        :raises AssertionError: if size is 0 or negative.
         """
-        assert batcher.size >= 1
-        size = max(int(batcher.size), size)
-        return BatchAppendable(batcher.type, batcher.tmp, size)
+        if size < 1:
+            raise AssertionError(f"size cannot be 0 or negative: {size}")
+        return BatchAppendable(batch_type, tmp, size)
 
     def reset(self):
         """Reset the batch.

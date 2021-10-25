@@ -3,15 +3,17 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import click  # type: ignore
-from kman.const import CONTEXT_SETTINGS
-from kman.batcher import BatcherThreading, FastaBatcher, load_batches
-from kman.io import input_file_exists, set_tempdir
-from kman.join import KJoinerThreading
-from kman.scripts import arguments as args
 import logging
 import tempfile
 from typing import Optional
+
+import click  # type: ignore
+
+from kman.batcher import BatcherThreading, FastaBatcher, load_batches
+from kman.const import CONTEXT_SETTINGS
+from kman.io import input_file_exists, set_tempdir
+from kman.join import KJoinerThreading
+from kman.scripts import arguments as args
 
 
 @click.command(
@@ -66,14 +68,14 @@ def run(
 
 
 def get_joiner(n_batches: int, threads: int = 1) -> KJoinerThreading:
-    """Instantiate k-way joiner for uniquing.
+    """Instantiate k-joiner for uniquing.
 
-    Args:
-        n_batches (int): number of input batches.
-        threads (int, optional): for parallelization. Defaults to 1.
-
-    Returns:
-        KJoinerThreading
+    :param n_batches: number of input batches.
+    :type n_batches: int
+    :param threads: for parallelization, defaults to 1
+    :type threads: int
+    :return: updated joiner instance.
+    :rtype: KJoinerThreading
     """
     joiner = KJoinerThreading()
     joiner.threads = threads

@@ -4,20 +4,24 @@
 @description: methods for batching
 """
 
-from enum import Enum
 import gzip
 import itertools
-from kman.batch import Batch
-from kman.seq import KMer, Sequence
-from kman.io import SmartFastaParser
-from joblib import Parallel, delayed  # type: ignore
 import logging
 import multiprocessing as mp
-import oligo_melting as om  # type: ignore
 import os
 import tempfile
+from enum import Enum
+from typing import IO, Any, List, Optional, Tuple, Type, Union
+
+import oligo_melting as om  # type: ignore
+from joblib import Parallel, delayed  # type: ignore
 from tqdm import tqdm  # type: ignore
-from typing import List, Type, Union
+
+from kman.batch import Batch
+from kman.parsers import SmartFastaParser
+from kman.seq import KMer, Sequence
+
+TMP_DIR = tempfile.TemporaryDirectory
 
 
 class BatcherBase(object):
@@ -30,7 +34,7 @@ class BatcherBase(object):
     Variables:
             DEFAULT_BATCH_SIZE {int} -- default batch size
             DEFAULT_NATYPE {om.NATYPES} -- default nucleic acid type
-            _tmp {tempfile.TemporaryDirectory}
+            _tmp {TMP_DIR}
             _batches {list} -- list of Batch instances
             __size {int} -- batch size
             _type {type} -- batched record type
@@ -40,30 +44,40 @@ class BatcherBase(object):
     DEFAULT_BATCH_SIZE = int(1e6)
     DEFAULT_NATYPE = om.NATYPES.DNA
 
-    _tmpH = None
-    _tmp = None
+    _tmpH: TMP_DIR
+    _tmp: str
     _batches: List[Batch]
     __size = DEFAULT_BATCH_SIZE
     _type: Type[Sequence] = KMer
     __natype = DEFAULT_NATYPE
 
-    def __init__(self, size=None, natype=None, tmp=None):
-        """Initializes BatcherBase.
+    def __init__(
+        self,
+        size: int,
+        natype: Optional[om.NATYPES] = None,
+        tmp: Optional[Union[TMP_DIR, str]] = None,
+    ):
 
-        Keyword Arguments:
-                size {int} -- batching size (default: {None})
-                natype {om.NATYPES} -- nucleic acid type
-                tmp {tempfile.TemporaryDirectory}
+        """Initializes BatcherBase
+
+        :param size: batching size
+        :type size: int
+        :param natype: nucleic acid type, defaults to None
+        :type natype: Optional[om.NATYPES], optional
+        :param tmp: temporary directory, defaults to None
+        :type tmp: Optional[Union[TMP_DIR, str]], optional
         """
         super().__init__()
         self.size = size
         self.natype = natype
-        if tempfile.TemporaryDirectory == type(tmp):
+        if isinstance(tmp, TMP_DIR):
             self._tmpH = tmp
             self._tmp = tmp.name
-        elif tmp is not None:
+        elif isinstance(tmp, str):
             self._tmp = tmp
-        self._batches = [Batch.from_batcher(self)]
+        else:
+            self._tmp = tempfile.gettempdir()
+        self._batches = [Batch.from_batcher(self.type, self.size, self.tmp)]
 
     @property
     def size(self) -> int:
@@ -84,7 +98,7 @@ class BatcherBase(object):
         return self.__natype
 
     @natype.setter
-    def natype(self, natype: Union[om.NATYPES, None]) -> None:
+    def natype(self, natype: Optional[om.NATYPES]) -> None:
         if natype is not None:
             assert natype in om.NATYPES
             self.__natype = natype
@@ -96,7 +110,7 @@ class BatcherBase(object):
     @property
     def tmp(self):
         if self._tmp is None:
-            self._tmpH = tempfile.TemporaryDirectory(prefix="kmanBatch")
+            self._tmpH = TMP_DIR(prefix="kmanBatch")
             self._tmp = self._tmpH.name
         return self._tmp
 
@@ -104,27 +118,28 @@ class BatcherBase(object):
         """Add a new empty batch to the current collection."""
         if self.collection[-1].is_full():
             self.collection[-1].write()
-            self._batches.append(Batch.from_batcher(self))
+            self._batches.append(Batch.from_batcher(self.type, self.size, self.tmp))
 
-    def add_record(self, record):
-        """Add a record to the currentcollection.
+    def add_record(self, record: Any):
+        """Add a record to the current collection.
 
-        The record is added to the last empty batch in the collection. If no
-        empty batches are left, a new empty batch is added.
-
-        Arguments:
-                record
+        :param record: to be added.
+        :type record: Any
         """
         self.new_batch()  # Add new batch if needed
         self.collection[-1].add(record)
 
-    def write_all(self, f="as_fasta", doSort=False, verbose=False):
-        """Write all batches to file.
+    def write_all(
+        self, f: str = "as_fasta", doSort: bool = False, verbose: bool = False
+    ):
+        """Write all batches to disk.
 
-        Keyword Arguments:
-                f {str} -- name of method in records class for string-like
-                           representation (default: {"as_fasta"})
-                doSort {bool} -- whether to sort when writing (default: {False})
+        :param f: name of string representation method, defaults to "as_fasta"
+        :type f: str
+        :param doSort: sort while writing, defaults to False
+        :type doSort: bool
+        :param verbose: be verbose, defaults to False
+        :type verbose: bool
         """
         biList = range(len(self.collection))
         description = "Writing"
@@ -169,15 +184,23 @@ class BatcherThreading(BatcherBase):
 
     __threads = 1
 
-    def __init__(self, threads=1, size=None, natype=None, tmp=None):
-        """Initialize BatcherThreading.
+    def __init__(
+        self,
+        size: int,
+        threads: int = 1,
+        natype: Optional[om.NATYPES] = None,
+        tmp: Optional[str] = None,
+    ):
+        """Initialize BatcherThreading
 
-        Keyword Arguments:
-                threads {number} -- number of threads for parallelization
-                                    (default: {1})
-                size {int} -- batching size (default: {None})
-                natype {om.NATYPES} -- nucleic acid type
-                tmp {tempfile.TemporaryDirectory}
+        :param size: records per batch
+        :type size: int
+        :param threads: for parallelization, defaults to 1
+        :type threads: int
+        :param natype: nucleic acid type, defaults to None
+        :type natype: Optional[om.NATYPE], optional
+        :param tmp: temporary folder, defaults to None
+        :type tmp: Optional[str], optional
         """
         super().__init__(size, natype, tmp)
         self.threads = threads
@@ -197,17 +220,17 @@ class BatcherThreading(BatcherBase):
                 self.add_record(record)
             batch.reset()
 
-    def feed_collection(self, new_collection, mode=FEED_MODE.FLOW):
-        """Feed new batch collection to the current one.
+    def feed_collection(
+        self,
+        new_collection: List[Batch],
+        mode: "BatcherThreading.FEED_MODE" = FEED_MODE.FLOW,
+    ):
+        """Feed a new collection to the batcher
 
-        Different modes of feeding are available, see documentation of
-        BatcherThreading.FEED_MODE for more details.
-
-        Arguments:
-                new_collection {list} -- list of Batches
-
-        Keyword Arguments:
-                mode {BatcherThreading.FEED_MODE} -- (default: {FEED_MODE.FLOW})
+        :param new_collection: new collection
+        :type new_collection: List[Batch]
+        :param mode: feed mode, defaults to FEED_MODE.FLOW
+        :type mode: BatcherThreading
         """
         assert all(b.type == self.type for b in new_collection)
         if mode == self.FEED_MODE.REPLACE:
@@ -218,21 +241,27 @@ class BatcherThreading(BatcherBase):
             self._batches.extend(new_collection)
 
     @staticmethod
-    def from_files(dirPath, threads, t=KMer, isFasta=True, reSort=False):
-        """Load batches from file.
+    def from_files(
+        dirPath: str,
+        threads: int,
+        t: Type = KMer,
+        isFasta: bool = True,
+        reSort: bool = False,
+    ) -> List[Batch]:
+        """Load files from a directory into a list of Batch objects.
 
-        Each file in the provided directory should be a written Batch.
-
-        Arguments:
-                dirPath {str} -- path to batch directory
-                threads {int} -- number of threads for parallelization
-
-        Keyword Arguments:
-                t {class} -- type of batch record (default: {KMer})
-                isFasta {bool} -- whether batches are fasta files (default: {True})
-
-        Returns:
-                list -- list of Batches
+        :param dirPath: path to folder with batches
+        :type dirPath: str
+        :param threads: for parallelization
+        :type threads: int
+        :param t: record type, defaults to KMer
+        :type t: Type
+        :param isFasta: is the input fasta, defaults to True
+        :type isFasta: bool
+        :param reSort: sort while reading, defaults to False
+        :type reSort: bool
+        :return: list of read batches
+        :rtype: List[Batch]
         """
         assert os.path.isdir(dirPath)
         threads = max(1, min(threads, mp.cpu_count()))
@@ -274,21 +303,25 @@ class FastaBatcher(BatcherThreading):
         self,
         scan_mode: MODE = MODE.KMERS,
         reverse: bool = False,
-        threads=1,
-        size=None,
-        natype=None,
-        tmp=None,
+        threads: int = 1,
+        size: int = BatcherThreading.DEFAULT_BATCH_SIZE,
+        natype: om.NATYPES = BatcherThreading.DEFAULT_NATYPE,
+        tmp: str = tempfile.gettempdir(),
     ):
-        """Initialize FastaBatcher instance.
+        """Initialize FastaBatcher.
 
-        A parent batcher class can be specified, whose attributes are inherited.
-
-        Keyword Arguments:
-                threads {int} -- number of threads for parallelization
-                                 (default: {1})
-                size {int} -- batch size (overridden by parent.size)
-                natype {om.NATYPES} -- nucleic acid type
-                tmp {tempfile.TemporaryDirectory}
+        :param scan_mode: scanning mode, defaults to MODE.KMERS
+        :type scan_mode: MODE
+        :param reverse: reverse-complement sequences, defaults to False
+        :type reverse: bool
+        :param threads: for parallelization, defaults to 1
+        :type threads: int
+        :param size: records per batch, defaults to BatcherThreading.DEFAULT_BATCH_SIZE
+        :type size: int
+        :param natype: nucleic acid type, defaults to BatcherThreading.DEFAULT_NATYPE
+        :type natype: om.NATYPES
+        :param tmp: temporary folder, defaults to tempfile.gettempdir()
+        :type tmp: str
         """
         super().__init__(threads, size, natype, tmp)
         self.mode = scan_mode
@@ -312,15 +345,20 @@ class FastaBatcher(BatcherThreading):
         assert type(True) == type(rc)
         self._doReverseComplement = rc
 
-    def __do_over_kmers(self, FH, k, feedMode=BatcherThreading.FEED_MODE.APPEND):
+    def __do_over_kmers(
+        self,
+        FH: IO,
+        k: int,
+        feedMode: BatcherThreading.FEED_MODE = BatcherThreading.FEED_MODE.APPEND,
+    ):
         """Parallelize over kmers.
 
-        Use RecordBatcher to parallelize when batching the kmers.
-
-        Arguments:
-                FH {io.TextIOWrapper} -- fasta file buffer
-                k {int} -- k-mer length
-                feedMode {BatcherThreading.FEED_MODE}
+        :param FH: Fasta file handle
+        :type FH: IO
+        :param k: k-mer length
+        :type k: int
+        :param feedMode: feeding mode, defaults to BatcherThreading.FEED_MODE.APPEND
+        :type feedMode: BatcherThreading.FEED_MODE, optional
         """
         batcher = FastaRecordBatcher.from_parent(self)
         for record in SmartFastaParser(FH).parse():
@@ -330,29 +368,42 @@ class FastaBatcher(BatcherThreading):
         self.feed_collection(batcher.collection, feedMode)
         self.write_all(doSort=True, verbose=True)
 
-    def __do_over_records(self, FH, k, feedMode=BatcherThreading.FEED_MODE.APPEND):
+    def __do_over_records(
+        self,
+        FH: IO,
+        k: int,
+        feedMode: BatcherThreading.FEED_MODE = BatcherThreading.FEED_MODE.APPEND,
+    ):
         """Parallelize over FASTA records.
 
-        Ran a non-parallelized RecordBatcher for each fasta record, in parallel.
+        Run a non-parallelized RecordBatcher for each fasta record, in parallel.
 
-        Arguments:
-                FH {io.TextIOWrapper} -- fasta file buffer
-                k {int} -- k-mer length
-                feedMode {BatcherThreading.FEED_MODE}
+        :param FH: fasta file handle.
+        :type FH: IO
+        :param k: k-mer length
+        :type k: int
+        :param feedMode: feeding mode, defaults to BatcherThreading.FEED_MODE.APPEND
+        :type feedMode: BatcherThreading.FEED_MODE, optional
         """
 
-        def do_record(size, natype, tmp, record, k):
+        def do_record(
+            size: int, natype: om.NATYPES, tmp: str, record: Tuple[str, str], k: int
+        ) -> List[Batch]:
             """Batch a single record.
 
-            Function to be passed to Parallel(delayed(*)).
+            Function to be passed to parallel(delayed(...))
 
-            Arguments:
-                    fastaBatcher {FastaBatcher} -- batcher
-                    record {tuple} -- (header, sequence)
-                    k {int} -- k-mer length
-
-            Returns:
-                    list -- list of Batches
+            :param size: records per batcher
+            :type size: int
+            :param natype: nucleic acid type
+            :type natype: om.NATYPES
+            :param tmp: temporary folder
+            :type tmp: str
+            :param record: fasta record
+            :type record: Tuple[str, str]
+            :param k: k-mer length
+            :type k: int
+            :return: List[Batch]
             """
             batcher = FastaRecordBatcher(1, size, natype, tmp)
             batcher.do(record, k, False)
@@ -372,15 +423,22 @@ class FastaBatcher(BatcherThreading):
             delayed(do_sort_write)(b) for b in self.collection if 0 != b.current_size
         )
 
-    def do(self, fasta, k, feedMode=BatcherThreading.FEED_MODE.APPEND):
-        """Start batching the fasta file.
+    def do(
+        self,
+        fasta: str,
+        k: int,
+        feedMode: BatcherThreading.FEED_MODE = BatcherThreading.FEED_MODE.APPEND,
+    ):
+        """Start batching a fasta file.
 
-        Batches a fasta file up to the specified number (self.size) of k-mers.
+        Batch a fasta file up to the specified number of k-mers.
 
-        Arguments:
-                fasta {string} -- path to fasta file
-                k {int} -- length of k-mers
-                feedMode {BatcherThreading.FEED_MODE}
+        :param fasta: path to fasta file
+        :type fasta: str
+        :param k: k-mer length
+        :type k: int
+        :param feedMode: feeding mode, defaults to BatcherThreading.FEED_MODE.APPEND
+        :type feedMode: BatcherThreading.FEED_MODE, optional
         """
         assert os.path.isfile(fasta)
         assert k > 1
@@ -409,15 +467,23 @@ class FastaRecordBatcher(BatcherThreading):
 
     _doReverseComplement = False
 
-    def __init__(self, threads=1, size=None, natype=None, tmp=None):
-        """Initialize FastaRecordBatcher instance.
+    def __init__(
+        self,
+        size: int,
+        threads: int = 1,
+        natype: om.NATYPES = om.NATYPES.DNA,
+        tmp: str = tempfile.gettempdir(),
+    ):
+        """Initialize FastaRecordBatcher.
 
-        Keyword Arguments:
-                threads {int} -- number of threads for parallelization
-                                 (default: {1})
-                size {int} -- batch size (overridden by parent.size)
-                natype {om.NATYPES} -- nucleic acid type
-                tmp {tempfile.TemporaryDirectory}
+        :param threads: for parallelization, defaults to 1
+        :type threads: int
+        :param size: records per batch, defaults to None
+        :type size: int
+        :param natype: nucleic acid type, defaults to None
+        :type natype: om.NATYPES
+        :param tmp: temporary folder, defaults to None
+        :type tmp: str
         """
         super().__init__(threads, size, natype, tmp)
 
@@ -430,14 +496,17 @@ class FastaRecordBatcher(BatcherThreading):
         assert type(True) == type(rc)
         self._doReverseComplement = rc
 
-    def do(self, record, k, verbose=True):
+    def do(self, record: Tuple[str, str], k: int, verbose: bool = True):
         """Start batching a fasta record.
 
         Requires a fasta record with header and sequence.
 
-        Arguments:
-                record {tuple} -- (header, sequence)
-                k {int} -- length of k-mers
+        :param record: (header, sequence)
+        :type record: Tuple[str, str]
+        :param k: k-mer length
+        :type k: int
+        :param verbose: be verbose, defaults to True
+        :type verbose: bool
         """
         record_name = record[0].split(" ")[0]
         if verbose:
@@ -459,22 +528,25 @@ class FastaRecordBatcher(BatcherThreading):
         self.write_all()
 
     @staticmethod
-    def build_batch(seq, name, k, batcher, i=0):
-        """Builds a Batch.
+    def build_batch(
+        seq: str, name: str, k: int, batcher: "FastaRecordBatcher", i: int = 0
+    ) -> Batch:
+        """Build a Batch.
 
-        Arguments:
-                seq {string} -- sequence
-                name {string} -- header
-                k {int} -- k for k-mering
-                batcher {BatcherBase} -- parent
-
-        Keyword Arguments:
-                i {number} -- position offset (default: {0})
-
-        Returns:
-                Batch
+        :param seq: sequence
+        :type seq: str
+        :param name: header
+        :type name: str
+        :param k: k-mer length
+        :type k: int
+        :param batcher: parent
+        :type batcher: FastaRecordBatcher
+        :param i: position offset, defaults to 0
+        :type i: int
+        :return: built Batch
+        :rtype: Batch
         """
-        batch = Batch.from_batcher(batcher)
+        batch = Batch.from_batcher(batcher.type, batcher.size, batcher.tmp)
         recordGen = Sequence.kmerator(
             seq, k, batcher.natype, name, i, rc=batcher.doReverseComplement
         )
@@ -483,14 +555,15 @@ class FastaRecordBatcher(BatcherThreading):
         return batch
 
     @staticmethod
-    def from_parent(parent):
-        """Initialize FastaRecordBatcher instance.
+    def from_parent(parent: "FastaBatcher") -> "FastaRecordBatcher":
+        """Initialize FastaRecordBatcher.
 
         A parent batcher class can be specified, whose attributes are inherited.
 
-        Keyword Arguments:
-                parent {Batcher} -- parent batcher to inherit attributes from
-                                    (default: {None})
+        :param parent: parent batcher to inherit attributes from
+        :type parent: FastaBatcher
+        :return: FastaRecordBatcher
+        :rtype: FastaRecordBatcher
         """
         batcher = FastaRecordBatcher(
             parent.threads, parent.size, parent.natype, parent.tmp
@@ -504,22 +577,19 @@ def load_batches(
 ) -> List[Batch]:
     """Load previously generated batches.
 
-    Args:
-        previous_batches (str): path to folder containing previous batches.
-        threads (int, optional): threads for parallelization. Defaults to 1.
-        re_sort (bool, optional): whether to re-sort batches. Defaults to False.
-
-    Raises:
-        AssertionError: input folder must exist and be non-empty
-
-    Returns:
-        List[Batch]: previous batches.
+    :param previous_batches: path to folder containing previous batches.
+    :type previous_batches: str
+    :param threads: for parallelization, defaults to 1
+    :type threads: int
+    :param re_sort: re-sort while reading, defaults to False
+    :type re_sort: bool
+    :raises AssertionError: input folder must exist and be non-empty
+    :return: read batches
+    :rtype: List[Batch]
     """
     if not os.path.isdir(previous_batches) or len(os.listdir(previous_batches)) > 0:
         raise AssertionError(
             f"folder with previous batches empty or not found: {previous_batches}"
         )
     logging.info(f"Loading previous batches from '{previous_batches}'...")
-    return BatcherThreading.from_files(
-        previous_batches, threads, reSort=re_sort
-    ).collection
+    return BatcherThreading.from_files(previous_batches, threads, reSort=re_sort)

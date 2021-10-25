@@ -3,13 +3,15 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import click  # type: ignore
-from kman.batcher import BatcherThreading, FastaBatcher
-from kman.join import KJoiner
 import tempfile
 
+import click  # type: ignore
 
-def input_path() -> click.Argument:
+from kman.batcher import BatcherThreading, FastaBatcher
+from kman.join import KJoiner
+
+
+def input_path():
     return click.argument(
         "input_path",
         metavar="INPUT",
@@ -17,7 +19,7 @@ def input_path() -> click.Argument:
     )
 
 
-def output_path(file_okay=False, dir_okay=False) -> click.Argument:
+def output_path(file_okay=False, dir_okay=False):
     return click.argument(
         "output_path",
         metavar="OUTPUT",
@@ -27,11 +29,11 @@ def output_path(file_okay=False, dir_okay=False) -> click.Argument:
     )
 
 
-def k() -> click.Argument:
+def k():
     return click.argument("k", type=click.INT)
 
 
-def reverse() -> click.Option:
+def reverse():
     return click.option(
         "--reverse",
         "-r",
@@ -40,7 +42,7 @@ def reverse() -> click.Option:
     )
 
 
-def scan_mode() -> click.Option:
+def scan_mode():
     return click.option(
         "--scan-mode",
         "-s",
@@ -52,7 +54,7 @@ def scan_mode() -> click.Option:
     )
 
 
-def batch_size() -> click.Option:
+def batch_size():
     return click.option(
         "--batch-size",
         "-b",
@@ -62,7 +64,7 @@ def batch_size() -> click.Option:
     )
 
 
-def batch_mode() -> click.Option:
+def batch_mode():
     return click.option(
         "--batch-mode",
         "-m",
@@ -75,7 +77,7 @@ def batch_mode() -> click.Option:
     )
 
 
-def previous_batches() -> click.Option:
+def previous_batches():
     return click.option(
         "--previous-batches",
         "-B",
@@ -84,7 +86,7 @@ def previous_batches() -> click.Option:
     )
 
 
-def count_mode() -> click.Option:
+def count_mode():
     return click.option(
         "--count-mode",
         "-m",
@@ -97,7 +99,7 @@ def count_mode() -> click.Option:
     )
 
 
-def memory_mode() -> click.Option:
+def memory_mode():
     return click.option(
         "--memory-mode",
         "-M",
@@ -107,7 +109,7 @@ def memory_mode() -> click.Option:
     )
 
 
-def threads() -> click.Option:
+def threads():
     return click.option(
         "--threads",
         "-t",
@@ -117,7 +119,7 @@ def threads() -> click.Option:
     )
 
 
-def tmp() -> click.Option:
+def tmp():
     return click.option(
         "--tmp",
         "-T",
@@ -127,7 +129,7 @@ def tmp() -> click.Option:
     )
 
 
-def compress() -> click.Option:
+def compress():
     return click.option(
         "--compress",
         "-C",
@@ -136,7 +138,7 @@ def compress() -> click.Option:
     )
 
 
-def re_sort() -> click.Option:
+def re_sort():
     return click.option(
         "--re-sort",
         "-R",

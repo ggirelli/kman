@@ -5,12 +5,14 @@
 """
 
 import gzip
-import h5py  # type: ignore
-import numpy as np  # type: ignore
 import os
 import tempfile
-from tqdm import tqdm  # type: ignore
+from abc import abstractmethod
 from typing import Dict, Set
+
+import h5py  # type: ignore
+import numpy as np  # type: ignore
+from tqdm import tqdm  # type: ignore
 
 
 class AbundanceVectorBase(object):
@@ -27,54 +29,65 @@ class AbundanceVectorBase(object):
     def __init__(self):
         super().__init__()
 
-    def check_length(self, k: int):
+    def check_length(self, k: int) -> None:
         """Check that sequence length is compatible.
 
-        Arguments:
-                k {int} -- sequence length
+        :param k: sequence length
+        :type k: int
+        :raises AssertionError: if length is not compatible
         """
         self._ks.add(k)
-        assert_msg = "inconsistent sequence lengths: %s" % self._ks
-        assert 1 == len(self._ks), assert_msg
+        if len(self._ks) != 1:
+            raise AssertionError(f"inconsistent sequence lengths: {self._ks}")
 
-    def add_count(self, ref, strand, pos, count, k, replace=False):
+    def add_count(
+        self, ref: str, strand: str, pos: int, count: int, k: int, replace: bool = False
+    ) -> None:
         """Add occurrence count to the vector.
 
-        Arguments:
-                ref {str} -- reference record name
-                strand {str} -- strand type
-                pos {int} -- position on ref:strand
-                count {int} -- occurrence count
-                k {int} -- sequence length
-
-        Keyword Arguments:
-                replace {bool} -- whether to allow for replacement of non-zero
-                                                  counts (default: {False})
+        :param ref: reference record name
+        :type ref: str
+        :param strand: strandedness
+        :type strand: str
+        :param pos: position on ref:strand
+        :type pos: int
+        :param count: occurrence count
+        :type count: int
+        :param k: sequence length
+        :type k: int
+        :param replace: allow for replacement of non-zero counts, defaults to False
+        :type replace: bool
         """
         self.check_length(k)
 
-    def add_ref(self, ref, strand, size):
+    @abstractmethod
+    def add_ref(self, ref: str, strand: str, size: int) -> None:
         """Add/resize reference:strand vector.
 
         Adds a new reference:strand vector of given size  if absent, or resizes
         the current one is size is greater than the current one.
 
-        Arguments:
-                ref {str} -- reference record name
-                strand {str} -- strand type
-                size {int} -- new size
+        :param ref: reference record name
+        :type ref: str
+        :param strand: strandedness
+        :type strand: str
+        :param size: new size
+        :type size: int
+        :raises NotImplementedError: abstract method
         """
-        pass
+        raise NotImplementedError
 
-    def write_to(self, dirpath):
+    @abstractmethod
+    def write_to(self, dirpath: str) -> None:
         """Write AbundanceVectors to a folder.
 
         The extension is removed from dirpath before proceeding.
 
-        Arguments:
-                dirpath {str} -- path to output directory.
+        :param dirpath: path to output directory
+        :type dirpath: str
+        :raises NotImplementedError: abstract method
         """
-        pass
+        raise NotImplementedError
 
 
 class AbundanceVector(AbundanceVectorBase):
@@ -93,19 +106,23 @@ class AbundanceVector(AbundanceVectorBase):
     def __init__(self):
         super().__init__()
 
-    def add_count(self, ref, strand, pos, count, k, replace=False):
+    def add_count(
+        self, ref: str, strand: str, pos: int, count: int, k: int, replace: bool = False
+    ) -> None:
         """Add occurrence count to the vector.
 
-        Arguments:
-                ref {str} -- reference record name
-                strand {str} -- strand type
-                pos {int} -- position on ref:strand
-                count {int} -- occurrence count
-                k {int} -- sequence length
-
-        Keyword Arguments:
-                replace {bool} -- whether to allow for replacement of non-zero
-                                                  counts (default: {False})
+        :param ref: reference record name
+        :type ref: str
+        :param strand: strandedness
+        :type strand: str
+        :param pos: position on ref:strand
+        :type pos: int
+        :param count: occurrence count
+        :type count: int
+        :param k: sequence length
+        :type k: int
+        :param replace: allow for replacement of non-zero counts, defaults to False
+        :type replace: bool
         """
         super().add_count(ref, strand, pos, count, k, replace)
         self.add_ref(ref, strand, pos + 1)
@@ -115,16 +132,18 @@ class AbundanceVector(AbundanceVectorBase):
             assert self.__data[ref][strand][pos] == 0, assert_msg
         self.__data[ref][strand][pos] = count
 
-    def add_ref(self, ref, strand, size):
+    def add_ref(self, ref: str, strand: str, size: int) -> None:
         """Add/resize reference:strand vector.
 
         Adds a new reference:strand vector of given size  if absent, or resizes
         the current one is size is greater than the current one.
 
-        Arguments:
-                ref {str} -- reference record name
-                strand {str} -- strand type
-                size {int} -- new size
+        :param ref: reference record name
+        :type ref: str
+        :param strand: strandedness
+        :type strand: str
+        :param size: new size
+        :type size: int
         """
         if ref not in self.__data.keys():
             self.__data[ref] = {}
@@ -133,13 +152,13 @@ class AbundanceVector(AbundanceVectorBase):
         elif size > self.__data[ref][strand].shape[0]:
             self.__data[ref][strand].resize(size)
 
-    def write_to(self, dirpath):
+    def write_to(self, dirpath: str) -> None:
         """Write AbundanceVectors to a folder.
 
         The extension is removed from dirpath before proceeding.
 
-        Arguments:
-                dirpath {str} -- path to output directory.
+        :param dirpath: output directory path
+        :type dirpath: str
         """
         dirpath = os.path.splitext(dirpath)[0]
         assert not os.path.isfile(dirpath)
@@ -173,19 +192,23 @@ class AbundanceVectorLocal(AbundanceVectorBase):
     def tmp(self):
         return self._tmp
 
-    def add_count(self, ref, strand, pos, count, k, replace=False):
+    def add_count(
+        self, ref: str, strand: str, pos: int, count: int, k: int, replace: bool = False
+    ) -> None:
         """Add occurrence count to the vector.
 
-        Arguments:
-                ref {str} -- reference record name
-                strand {str} -- strand type
-                pos {int} -- position on ref:strand
-                count {int} -- occurrence count
-                k {int} -- sequence length
-
-        Keyword Arguments:
-                replace {bool} -- whether to allow for replacement of non-zero
-                                                  counts (default: {False})
+        :param ref: reference record name
+        :type ref: str
+        :param strand: strandedness
+        :type strand: str
+        :param pos: position on ref:strand
+        :type pos: int
+        :param count: occurrence count
+        :type count: int
+        :param k: sequence length
+        :type k: int
+        :param replace: allow for replacement of non-zero counts, defaults to False
+        :type replace: bool
         """
         super().add_count(ref, strand, pos, count, k, replace)
         self.add_ref(ref, strand, pos)
@@ -196,16 +219,18 @@ class AbundanceVectorLocal(AbundanceVectorBase):
                 assert DH["abundances"][pos] == 0, assert_msg
             DH["abundances"][pos] = count
 
-    def add_ref(self, ref, strand, size):
+    def add_ref(self, ref: str, strand: str, size: int) -> None:
         """Add/resize reference:strand vector.
 
         Adds a new reference:strand vector of given size  if absent, or resizes
         the current one is size is greater than the current one.
 
-        Arguments:
-                ref {str} -- reference record name
-                strand {str} -- strand type
-                size {int} -- new size
+        :param ref: reference record name
+        :type ref: str
+        :param strand: strandedness
+        :type strand: str
+        :param size: new size
+        :type size: int
         """
         if not self.has_ref(ref, strand):
             self.mk_ref_file(ref, strand, size)
@@ -235,13 +260,13 @@ class AbundanceVectorLocal(AbundanceVectorBase):
                 )
                 data[...] = np.zeros((size + 1,))
 
-    def write_to(self, dirpath):
+    def write_to(self, dirpath: str) -> None:
         """Write AbundanceVectors to a folder.
 
         The extension is removed from dirpath before proceeding.
 
-        Arguments:
-                dirpath {str} -- path to output directory.
+        :param dirpath: output directory path
+        :type dirpath: str
         """
         dirpath = os.path.splitext(dirpath)[0]
         assert not os.path.isfile(dirpath)

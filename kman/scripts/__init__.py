@@ -3,11 +3,11 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from kman.scripts import arguments
-from kman.scripts import kmer, kmer_batch, kmer_count, kmer_uniq
-
 import logging
+
 from rich.logging import RichHandler  # type: ignore
+
+from kman.scripts import arguments, kmer, kmer_batch, kmer_count, kmer_uniq
 
 logging.basicConfig(
     level=logging.INFO,

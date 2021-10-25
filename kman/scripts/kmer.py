@@ -4,6 +4,7 @@
 """
 
 import click  # type: ignore
+
 from kman import __version__
 from kman.const import CONTEXT_SETTINGS
 from kman.scripts import kmer_batch, kmer_count, kmer_uniq

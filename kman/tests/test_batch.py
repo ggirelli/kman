@@ -3,8 +3,9 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from kman.batch import Batch, BatchAppendable
 import os
+
+from kman.batch import Batch, BatchAppendable
 
 
 def test_Batch():
@@ -52,7 +53,7 @@ def test_Batch():
     b.write()
     assert os.path.isfile(b.tmp)
     assert b.is_written
-    assert isinstance(b.collection, type(None))
+    assert b.collection == [None]
     assert 4 == b.current_size
     assert 4 == len(list(b.record_gen()))
 
