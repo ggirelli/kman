@@ -10,7 +10,7 @@ import tempfile
 import time
 from typing import IO, Any, Iterator, List, Type
 
-from Bio.SeqIO.FastaIO import SimpleFastaParser
+from Bio.SeqIO.FastaIO import SimpleFastaParser  # type: ignore
 
 from kman.batcher import BatcherBase
 from kman.io import SmartFastaParser
