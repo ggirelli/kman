@@ -5,9 +5,12 @@
 """
 
 import gzip
+from kman.batch import Batch
 import io
 import os
+import shutil
 import tempfile
+from tqdm import tqdm
 from typing import List, Tuple
 
 
@@ -129,3 +132,30 @@ def set_tempdir(path: str, create: bool = True) -> None:
 def input_file_exists(path: str) -> None:
     if not os.path.isfile(path):
         raise AssertionError(f"input file not found: {path}")
+
+
+def copy_batches(
+    batches: List[Batch], output_path: str, compress: bool = False
+) -> None:
+    """Copy generated batches to output folder.
+
+    Args:
+        batches (List[Batch]): generated batches.
+        output_path (str): path to output folder.
+        compress (bool, optional): gzip batches. Defaults to False.
+    """
+    batch_list = tqdm(
+        (batch for batch in batches if os.path.isfile(batch.tmp)),
+        total=len(batches),
+    )
+    for current_batch in batch_list:
+        if compress:
+            with gzip.open(
+                os.path.join(output_path, f"{os.path.basename(current_batch.tmp)}.gz"),
+                "wb",
+            ) as OH:
+                with open(current_batch.tmp, "rb") as IH:
+                    for line in IH:
+                        OH.write(line)
+        else:
+            shutil.copy(current_batch.tmp, output_path)

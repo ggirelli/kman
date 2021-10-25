@@ -4,17 +4,13 @@
 """
 
 import click  # type: ignore
-import gzip
 from kman.const import CONTEXT_SETTINGS
-from kman.batch import Batch
 from kman.batcher import BatcherThreading, FastaBatcher
-from kman.io import input_file_exists, set_tempdir
+from kman.io import copy_batches, input_file_exists, set_tempdir
 from kman.scripts import arguments as args
 import logging
 import os
-import shutil
 import tempfile
-from tqdm import tqdm  # type: ignore
 from typing import List
 
 
@@ -87,30 +83,3 @@ def prepare_run(input_path: str, output_path: str, tmp: str) -> None:
         raise AssertionError("output folder must be empty or non-existent.")
     set_tempdir(tmp)
     os.makedirs(output_path, exist_ok=True)
-
-
-def copy_batches(
-    batches: List[Batch], output_path: str, compress: bool = False
-) -> None:
-    """Copy generated batches to output folder.
-
-    Args:
-        batches (List[Batch]): generated batches.
-        output_path (str): path to output folder.
-        compress (bool, optional): gzip batches. Defaults to False.
-    """
-    batch_list = tqdm(
-        (batch for batch in batches if os.path.isfile(batch.tmp)),
-        total=len(batches),
-    )
-    for current_batch in batch_list:
-        if compress:
-            with gzip.open(
-                os.path.join(output_path, f"{os.path.basename(current_batch.tmp)}.gz"),
-                "wb",
-            ) as OH:
-                with open(current_batch.tmp, "rb") as IH:
-                    for line in IH:
-                        OH.write(line)
-        else:
-            shutil.copy(current_batch.tmp, output_path)
