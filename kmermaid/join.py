@@ -185,10 +185,12 @@ class KJoiner:
         """
         super().__init__()
         if mode is not None:
-            assert mode in self.MODE
+            if mode not in self.MODE:
+                raise AssertionError
             self.__mode = mode
         if memory is not None:
-            assert memory in self.MEMORY
+            if memory not in self.MEMORY:
+                raise AssertionError
             self.__memory = memory
         self.__set_join_function()
 
@@ -198,7 +200,8 @@ class KJoiner:
 
     @mode.setter
     def mode(self, mode):
-        assert mode in self.MODE
+        if mode not in self.MODE:
+            raise AssertionError
         self.__mode = mode
         self.__set_join_function()
 
@@ -208,7 +211,8 @@ class KJoiner:
 
     @memory.setter
     def memory(self, memory):
-        assert memory in self.MEMORY
+        if memory not in self.MEMORY:
+            raise AssertionError
         self.__memory = memory
         self.__set_join_function()
 
@@ -342,7 +346,8 @@ class KJoiner:
         elif self.memory == self.MEMORY.LOCAL:
             kwargs["vector"] = AbundanceVectorLocal()
         else:
-            assert self.memory in [self.MEMORY.NORMAL, self.MEMORY.LOCAL]
+            if self.memory not in [self.MEMORY.NORMAL, self.MEMORY.LOCAL]:
+                raise AssertionError
         return kwargs
 
     def _post_join(self, **kwargs) -> None:
@@ -405,7 +410,8 @@ class KJoinerThreading(KJoiner):
 
     @doSort.setter
     def doSort(self, doSort):
-        assert type(True) is type(doSort)
+        if type(True) is not type(doSort):
+            raise AssertionError
         self.__doSort = doSort
 
     @property
@@ -424,7 +430,8 @@ class KJoinerThreading(KJoiner):
     def batch_size(self, batch_size):
         if type(0) != type(batch_size):
             raise AssertionError
-        assert batch_size >= 2
+        if batch_size < 2:
+            raise AssertionError
         self.__batch_size = batch_size
 
     @property
@@ -515,7 +522,8 @@ class SeqCountBatcher(BatcherThreading):
 
     @doSort.setter
     def doSort(self, doSort):
-        assert type(True) is type(doSort)
+        if type(True) is not type(doSort):
+            raise AssertionError
         self.__doSort = doSort
 
     def do(self, recordBatch: List[Batch]) -> None:
@@ -595,5 +603,6 @@ class SeqCountBatcher(BatcherThreading):
 
     @staticmethod
     def from_parent(parent, n_batches):
-        assert type(parent) is KJoinerThreading
+        if type(parent) is not KJoinerThreading:
+            raise AssertionError
         return SeqCountBatcher(n_batches, parent.threads, tmp=parent.tmp)
