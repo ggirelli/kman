@@ -553,4 +553,4 @@ class BatchAppendable(Batch):
         self._remaining = self.size
 
     def unwrite(self, *args, **kwargs):
-        pass
+        raise NotImplementedError()
