@@ -26,10 +26,10 @@ import oligo_melting as om  # type: ignore
 from joblib import Parallel, delayed  # type: ignore
 from tqdm import tqdm  # type: ignore
 
-from kman.abundance import AbundanceVector, AbundanceVectorLocal
-from kman.batch import Batch, BatchAppendable
-from kman.batcher import BatcherThreading
-from kman.seq import SequenceCoords, SequenceCount
+from kmermaid.abundance import AbundanceVector, AbundanceVectorLocal
+from kmermaid.batch import Batch, BatchAppendable
+from kmermaid.batcher import BatcherThreading
+from kmermaid.seq import SequenceCoords, SequenceCount
 
 
 class Crawler(object):
@@ -434,7 +434,7 @@ class KJoinerThreading(KJoiner):
     @property
     def tmp(self):
         if self._tmp is None:
-            self._tmp = tempfile.TemporaryDirectory(prefix="kmanJoin")
+            self._tmp = tempfile.TemporaryDirectory(prefix="kmermaidJoin")
         return self._tmp
 
     def __parallel_join(self, recordBatches: List[Batch], outpath: str) -> None:

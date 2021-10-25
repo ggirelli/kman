@@ -7,7 +7,7 @@ import logging
 
 from rich.logging import RichHandler  # type: ignore
 
-from kman.scripts import arguments, kmer, kmer_batch, kmer_count, kmer_uniq
+from kmermaid.scripts import arguments, kmer, kmer_batch, kmer_count, kmer_uniq
 
 logging.basicConfig(
     level=logging.INFO,

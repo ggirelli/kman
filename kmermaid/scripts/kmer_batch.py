@@ -9,10 +9,10 @@ import tempfile
 
 import click  # type: ignore
 
-from kman.batcher import BatcherThreading, FastaBatcher
-from kman.const import CONTEXT_SETTINGS
-from kman.io import copy_batches, input_file_exists, set_tempdir
-from kman.scripts import arguments as args
+from kmermaid.batcher import BatcherThreading, FastaBatcher
+from kmermaid.const import CONTEXT_SETTINGS
+from kmermaid.io import copy_batches, input_file_exists, set_tempdir
+from kmermaid.scripts import arguments as args
 
 
 @click.command(

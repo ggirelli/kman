@@ -5,9 +5,9 @@
 
 import click  # type: ignore
 
-from kman import __version__
-from kman.const import CONTEXT_SETTINGS
-from kman.scripts import kmer_batch, kmer_count, kmer_uniq
+from kmermaid import __version__
+from kmermaid.const import CONTEXT_SETTINGS
+from kmermaid.scripts import kmer_batch, kmer_count, kmer_uniq
 
 
 @click.group(
@@ -16,8 +16,8 @@ from kman.scripts import kmer_batch, kmer_count, kmer_uniq
     help=f"""\b
 Version:    {__version__}
 Author:     Gabriele Girelli
-Docs:       http://ggirelli.github.io/kman
-Code:       http://github.com/ggirelli/kman
+Docs:       http://ggirelli.github.io/kmermaid
+Code:       http://github.com/ggirelli/kmermaid
 
 K-mer management tools.
 """,

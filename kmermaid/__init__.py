@@ -5,7 +5,7 @@
 
 from importlib.metadata import version
 
-from kman import abundance, batch, batcher, const, io, join, seq
+from kmermaid import abundance, batch, batcher, const, io, join, seq
 
 try:
     __version__ = version(__name__)

@@ -10,4 +10,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.0.1]
 
-[0.0.1] https://github.com/ggirelli/kman/releases/tag/v0.0.1
+[0.0.1] https://github.com/ggirelli/kmermaid/releases/tag/v0.0.1

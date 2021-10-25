@@ -9,11 +9,11 @@ from typing import Optional
 
 import click  # type: ignore
 
-from kman.batcher import BatcherThreading, FastaBatcher, load_batches
-from kman.const import CONTEXT_SETTINGS
-from kman.io import input_file_exists, set_tempdir
-from kman.join import KJoinerThreading
-from kman.scripts import arguments as args
+from kmermaid.batcher import BatcherThreading, FastaBatcher, load_batches
+from kmermaid.const import CONTEXT_SETTINGS
+from kmermaid.io import input_file_exists, set_tempdir
+from kmermaid.join import KJoinerThreading
+from kmermaid.scripts import arguments as args
 
 
 @click.command(

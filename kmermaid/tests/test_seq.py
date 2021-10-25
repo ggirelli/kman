@@ -5,7 +5,7 @@
 
 import oligo_melting as om  # type: ignore
 
-from kman.seq import KMer, Sequence, SequenceCoords, SequenceCount
+from kmermaid.seq import KMer, Sequence, SequenceCoords, SequenceCount
 
 
 def test_SequenceCoords_start():

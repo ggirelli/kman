@@ -7,8 +7,8 @@ import tempfile
 
 import click  # type: ignore
 
-from kman.batcher import BatcherThreading, FastaBatcher
-from kman.join import KJoiner
+from kmermaid.batcher import BatcherThreading, FastaBatcher
+from kmermaid.join import KJoiner
 
 
 def input_path():

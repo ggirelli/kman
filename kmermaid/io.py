@@ -12,7 +12,7 @@ from typing import List
 
 from tqdm import tqdm  # type: ignore
 
-from kman.batch import Batch
+from kmermaid.batch import Batch
 
 
 def set_tempdir(path: str, create: bool = True) -> None:

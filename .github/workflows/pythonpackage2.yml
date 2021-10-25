@@ -54,10 +54,10 @@ jobs:
     - name: Run style checks
       run: |
         source .venv/bin/activate
-        flake8 kman/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 kman/ --count --max-complexity=5 --max-line-length=88 --ignore=E203 --statistics --docstring-style=SPHINX --strictness=short
-        black kman/ --check
-        mypy kman/
+        flake8 kmermaid/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 kmermaid/ --count --max-complexity=5 --max-line-length=88 --ignore=E203 --statistics --docstring-style=SPHINX --strictness=short
+        black kmermaid/ --check
+        mypy kmermaid/
 
     - name: Run tests
       run: |
@@ -69,4 +69,4 @@ jobs:
         poetry check
         source .venv/bin/activate
         # safety check --full-report
-        bandit -ll --recursive kman/
+        bandit -ll --recursive kmermaid/

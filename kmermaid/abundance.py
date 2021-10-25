@@ -185,7 +185,7 @@ class AbundanceVectorLocal(AbundanceVectorBase):
 
     def __init__(self):
         super(AbundanceVectorLocal, self).__init__()
-        self.__tmpH = tempfile.TemporaryDirectory(prefix="kmanVector")
+        self.__tmpH = tempfile.TemporaryDirectory(prefix="kmmVector")
         self._tmp = self.__tmpH.name
 
     @property

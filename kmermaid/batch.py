@@ -12,8 +12,8 @@ from typing import IO, Any, Iterator, List, Type
 
 from Bio.SeqIO.FastaIO import SimpleFastaParser  # type: ignore
 
-from kman.parsers import SmartFastaParser
-from kman.seq import KMer
+from kmermaid.parsers import SmartFastaParser
+from kmermaid.seq import KMer
 
 
 class Batch(object):

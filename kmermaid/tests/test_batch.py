@@ -5,7 +5,7 @@
 
 import os
 
-from kman.batch import Batch, BatchAppendable
+from kmermaid.batch import Batch, BatchAppendable
 
 
 def test_Batch():

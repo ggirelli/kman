@@ -17,9 +17,9 @@ import oligo_melting as om  # type: ignore
 from joblib import Parallel, delayed  # type: ignore
 from tqdm import tqdm  # type: ignore
 
-from kman.batch import Batch
-from kman.parsers import SmartFastaParser
-from kman.seq import KMer, Sequence
+from kmermaid.batch import Batch
+from kmermaid.parsers import SmartFastaParser
+from kmermaid.seq import KMer, Sequence
 
 TMP_DIR = tempfile.TemporaryDirectory
 
@@ -110,7 +110,7 @@ class BatcherBase(object):
     @property
     def tmp(self):
         if self._tmp is None:
-            self._tmpH = TMP_DIR(prefix="kmanBatch")
+            self._tmpH = TMP_DIR(prefix="kmermaidBatch")
             self._tmp = self._tmpH.name
         return self._tmp
 
