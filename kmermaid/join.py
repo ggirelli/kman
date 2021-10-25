@@ -399,9 +399,6 @@ class KJoinerThreading(KJoiner):
     __batch_size = 10
     __doSort = False
 
-    def __init__(self, mode=None, memory=None):
-        super().__init__(mode, memory)
-
     @property
     def doSort(self):
         return self.__doSort
