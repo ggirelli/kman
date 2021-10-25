@@ -49,9 +49,8 @@ def copy_batches(
             with gzip.open(
                 os.path.join(output_path, f"{os.path.basename(current_batch.tmp)}.gz"),
                 "wb",
-            ) as OH:
-                with open(current_batch.tmp, "rb") as IH:
-                    for line in IH:
-                        OH.write(line)
+            ) as OH, open(current_batch.tmp, "rb") as IH:
+                for line in IH:
+                    OH.write(line)
         else:
             shutil.copy(current_batch.tmp, output_path)
