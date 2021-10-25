@@ -57,7 +57,6 @@ class BatcherBase:
         natype: Optional[om.NATYPES] = None,
         tmp: Optional[Union[TMP_DIR, str]] = None,
     ):
-
         """Initializes BatcherBase
 
         :param size: batching size
