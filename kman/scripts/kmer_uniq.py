@@ -48,7 +48,7 @@ from typing import Optional
     "-b",
     type=click.INT,
     default=1000000,
-    help=f"""Number of k-mers per batch. Default: 1000000""",
+    help="Number of k-mers per batch. Default: 1000000",
 )
 @click.option(
     "--batch-mode",

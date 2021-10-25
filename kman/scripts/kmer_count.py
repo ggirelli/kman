@@ -18,7 +18,7 @@ from typing import Optional
 @click.command(
     name="count",
     context_settings=CONTEXT_SETTINGS,
-    help=f"""
+    help="""
 Count occurrences of all k-mers from INPUT.
 
 \b
@@ -64,7 +64,7 @@ The INPUT file can be gzipped.
     "-b",
     type=click.INT,
     default=1000000,
-    help=f"""Number of k-mers per batch. Default: 1000000""",
+    help="Number of k-mers per batch. Default: 1000000",
 )
 @click.option(
     "--batch-mode",
