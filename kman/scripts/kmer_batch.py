@@ -9,6 +9,7 @@ from kman.const import CONTEXT_SETTINGS
 from kman.batch import Batch
 from kman.batcher import BatcherThreading, FastaBatcher
 from kman.io import input_file_exists, set_tempdir
+from kman.scripts import arguments as args
 import logging
 import os
 import shutil
@@ -27,66 +28,16 @@ Batches are written to an OUTPUT folder, which must be empty or non-existent.
 The INPUT file can be gzipped.
 """,
 )
-@click.argument(
-    "input_path",
-    metavar="INPUT",
-    type=click.Path(exists=True, file_okay=True, readable=True),
-)
-@click.argument(
-    "output_path",
-    metavar="OUTPUT",
-    type=click.Path(exists=False, dir_okay=True, writable=True),
-)
-@click.argument("k", type=click.INT)
-@click.option(
-    "--reverse",
-    "-r",
-    is_flag=True,
-    help="Include also reverse-complemented sequences",
-)
-@click.option(
-    "--scan-mode",
-    "-s",
-    type=click.Choice([m.name for m in list(FastaBatcher.MODE)], case_sensitive=True),
-    default=FastaBatcher.MODE.KMERS.name,
-    help=f"""HELP PAGE MISSING!!! Default: {FastaBatcher.MODE.KMERS.name}""",
-)
-@click.option(
-    "--batch-size",
-    "-b",
-    type=click.INT,
-    default=1000000,
-    help="Number of k-mers per batch. Default: 1000000",
-)
-@click.option(
-    "--batch-mode",
-    "-m",
-    type=click.Choice(
-        [m.name for m in list(BatcherThreading.FEED_MODE)], case_sensitive=True
-    ),
-    default=BatcherThreading.FEED_MODE.APPEND.name,
-    help=f"""HELP PAGE MISSING!!! Default: {BatcherThreading.FEED_MODE.APPEND.name}""",
-)
-@click.option(
-    "--threads",
-    "-t",
-    type=click.INT,
-    default=1,
-    help="Number of threads for parallelization.",
-)
-@click.option(
-    "--tmp",
-    "-T",
-    type=click.Path(exists=True),
-    default=tempfile.gettempdir(),
-    help=f"""Temporary folder path. Default: "{tempfile.gettempdir()}""",
-)
-@click.option(
-    "--compress",
-    "-C",
-    is_flag=True,
-    help="Compress output files.",
-)
+@args.input_path()
+@args.output_path(dir_okay=True)
+@args.k()
+@args.reverse()
+@args.scan_mode()
+@args.batch_size()
+@args.batch_mode()
+@args.threads()
+@args.tmp()
+@args.compress()
 def run(
     input_path: str,
     output_path: str,

@@ -8,6 +8,7 @@ from kman.const import CONTEXT_SETTINGS
 from kman.batcher import BatcherThreading, FastaBatcher, load_batches
 from kman.io import input_file_exists, set_tempdir
 from kman.join import KJoiner, KJoinerThreading
+from kman.scripts import arguments as args
 import logging
 import os
 import resource
@@ -35,88 +36,19 @@ name of the specified OUTPUT path, after removing the extension.
 The INPUT file can be gzipped.
 """,
 )
-@click.argument(
-    "input_path",
-    metavar="INPUT",
-    type=click.Path(exists=True, file_okay=True, readable=True),
-)
-@click.argument(
-    "output_path",
-    metavar="OUTPUT",
-    type=click.Path(exists=False, file_okay=True, writable=True),
-)
-@click.argument("k", type=click.INT)
-@click.option(
-    "--reverse",
-    "-r",
-    is_flag=True,
-    help="Include also reverse-complemented sequences",
-)
-@click.option(
-    "--scan-mode",
-    "-s",
-    type=click.Choice([m.name for m in list(FastaBatcher.MODE)], case_sensitive=True),
-    default=FastaBatcher.MODE.KMERS.name,
-    help=f"""HELP PAGE MISSING!!! Default: {FastaBatcher.MODE.KMERS.name}""",
-)
-@click.option(
-    "--batch-size",
-    "-b",
-    type=click.INT,
-    default=1000000,
-    help="Number of k-mers per batch. Default: 1000000",
-)
-@click.option(
-    "--batch-mode",
-    "-m",
-    type=click.Choice(
-        [m.name for m in list(BatcherThreading.FEED_MODE)], case_sensitive=True
-    ),
-    default=BatcherThreading.FEED_MODE.APPEND.name,
-    help=f"""HELP PAGE MISSING!!! Default: {BatcherThreading.FEED_MODE.APPEND.name}""",
-)
-@click.option(
-    "--previous-batches",
-    "-B",
-    type=click.Path(exists=True, dir_okay=True, readable=True),
-    help="Path to folder with previously generated batches.",
-)
-@click.option(
-    "--count-mode",
-    "-m",
-    type=click.Choice(
-        [m.name for m in list(KJoiner.MODE) if "COUNT" in m.name], case_sensitive=True
-    ),
-    default=KJoiner.MODE.SEQ_COUNT.name,
-    help=f"""Default: "{KJoiner.MODE.SEQ_COUNT.name}""",
-)
-@click.option(
-    "--memory-mode",
-    "-M",
-    type=click.Choice([m.name for m in list(KJoiner.MEMORY)], case_sensitive=True),
-    default=KJoiner.MEMORY.NORMAL.name,
-    help=f"""HELP PAGE MISSING!!! Default: "{KJoiner.MEMORY.NORMAL.name}""",
-)
-@click.option(
-    "--threads",
-    "-t",
-    type=click.INT,
-    default=1,
-    help="Number of threads for parallelization.",
-)
-@click.option(
-    "--tmp",
-    "-T",
-    type=click.Path(exists=True),
-    default=tempfile.gettempdir(),
-    help=f"""Temporary folder path. Default: "{tempfile.gettempdir()}""",
-)
-@click.option(
-    "--re-sort",
-    "-R",
-    is_flag=True,
-    help="Force batch re-sorting, when loaded with -B.",
-)
+@args.input_path()
+@args.output_path(file_okay=True)
+@args.k()
+@args.reverse()
+@args.scan_mode()
+@args.batch_size()
+@args.batch_mode()
+@args.previous_batches()
+@args.count_mode()
+@args.memory_mode()
+@args.threads()
+@args.tmp()
+@args.re_sort()
 def run(
     input_path: str,
     output_path: str,
