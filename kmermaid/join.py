@@ -51,7 +51,8 @@ class Crawler(object):
     def __init__(self):
         super().__init__()
 
-    def count_records(self, batches: List[Batch]) -> int:
+    @staticmethod
+    def count_records(batches: List[Batch]) -> int:
         """Count records across batches.
 
         :param batches: list of batches
