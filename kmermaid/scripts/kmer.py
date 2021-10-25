@@ -25,7 +25,6 @@ K-mer management tools.
 @click.version_option(__version__)
 def main():
     """This is just an entry point."""
-    pass
 
 
 main.add_command(kmer_batch.run)
