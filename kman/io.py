@@ -6,6 +6,8 @@
 
 import gzip
 import io
+import os
+import tempfile
 from typing import List, Tuple
 
 
@@ -114,3 +116,10 @@ class SmartFastaParser(object):
     @staticmethod
     def parse_file(path):
         return SmartFastaParser(path).parse()
+
+
+def set_tempdir(path: str, create_if_needed: bool = False) -> None:
+    """Set a new temporary directory. Creates it at the specified path if not found."""
+    if not os.path.isdir(path):
+        os.makedirs(path, exist_ok=True)
+    tempfile.tempdir = path
