@@ -14,7 +14,8 @@ def test_SequenceCoords_start():
     except AssertionError:
         pass
     else:
-        assert False, "start must be tested to be >=0"
+        if not False:
+            raise AssertionError("start must be tested to be >=0")
 
 
 def test_SequenceCoords_end():
@@ -23,7 +24,8 @@ def test_SequenceCoords_end():
     except AssertionError:
         pass
     else:
-        assert False, "end must be tested to be >=0"
+        if not False:
+            raise AssertionError("end must be tested to be >=0")
 
 
 def test_SequenceCoords_strand():
@@ -32,7 +34,8 @@ def test_SequenceCoords_strand():
     except AssertionError:
         pass
     else:
-        assert False, "strand must be tested to be from SequenceCoords.STRAND"
+        if not False:
+            raise AssertionError("strand must be tested to be from SequenceCoords.STRAND")
 
 
 def test_SequenceCoords_2():
@@ -41,17 +44,25 @@ def test_SequenceCoords_2():
     end = 1e3
     strand = SequenceCoords.STRAND.PLUS
     sc = SequenceCoords(ref, start, end, strand)
-    assert ref == sc.ref
-    assert start == sc.start
-    assert end == sc.end
-    assert strand == sc.strand
+    if ref != sc.ref:
+        raise AssertionError
+    if start != sc.start:
+        raise AssertionError
+    if end != sc.end:
+        raise AssertionError
+    if strand != sc.strand:
+        raise AssertionError
 
-    assert strand == SequenceCoords.rev(SequenceCoords.STRAND.MINUS)
-    assert SequenceCoords.STRAND.MINUS == SequenceCoords.rev(strand)
+    if strand != SequenceCoords.rev(SequenceCoords.STRAND.MINUS):
+        raise AssertionError
+    if SequenceCoords.STRAND.MINUS != SequenceCoords.rev(strand):
+        raise AssertionError
 
     strRep = "%s:%d-%d:%s" % (ref, start, end, strand.label)
-    assert strRep == str(sc)
-    assert sc == SequenceCoords.from_str(strRep)
+    if strRep != str(sc):
+        raise AssertionError
+    if sc != SequenceCoords.from_str(strRep):
+        raise AssertionError
 
 
 def test_KMer_start():
@@ -60,7 +71,8 @@ def test_KMer_start():
     except AssertionError:
         pass
     else:
-        assert False, "start must be tested to be >=0"
+        if not False:
+            raise AssertionError("start must be tested to be >=0")
 
 
 def test_KMer_end():
@@ -69,7 +81,8 @@ def test_KMer_end():
     except AssertionError:
         pass
     else:
-        assert False, "end must be tested to be >=0"
+        if not False:
+            raise AssertionError("end must be tested to be >=0")
 
 
 def test_KMer_strand():
@@ -78,7 +91,8 @@ def test_KMer_strand():
     except AssertionError:
         pass
     else:
-        assert False, "strand must be tested to be from SequenceCoords.STRAND"
+        if not False:
+            raise AssertionError("strand must be tested to be from SequenceCoords.STRAND")
 
 
 def test_KMer_NATYPE():
@@ -87,7 +101,8 @@ def test_KMer_NATYPE():
     except AssertionError:
         pass
     else:
-        assert False, "nucl. acid type must be tested to be from om.NATYPES"
+        if not False:
+            raise AssertionError("nucl. acid type must be tested to be from om.NATYPES")
 
 
 def test_KMer_length():
@@ -96,22 +111,30 @@ def test_KMer_length():
     except AssertionError:
         pass
     else:
-        assert False, "length must be tested for match"
+        if not False:
+            raise AssertionError("length must be tested for match")
 
 
 def test_KMer():
     seq = "ACGATCGATCG"
     k = KMer("chr1", 0, len(seq), seq)
     sc = SequenceCoords("chr1", 0, 11, SequenceCoords.STRAND.PLUS)
-    assert sc == k.coords
-    assert str(sc) == k.header
-    assert seq == k.seq
+    if sc != k.coords:
+        raise AssertionError
+    if str(sc) != k.header:
+        raise AssertionError
+    if seq != k.seq:
+        raise AssertionError
 
-    assert k == KMer.from_fasta((k.header, k.seq))
-    assert ">%s\n%s\n" % (k.header, k.seq) == k.as_fasta()
-    assert "%s\t%s" % (k.header, k.seq) == str(k)
+    if k != KMer.from_fasta((k.header, k.seq)):
+        raise AssertionError
+    if ">%s\n%s\n" % (k.header, k.seq) != k.as_fasta():
+        raise AssertionError
+    if "%s\t%s" % (k.header, k.seq) != str(k):
+        raise AssertionError
 
-    assert k.is_ab_checked()
+    if not k.is_ab_checked():
+        raise AssertionError
 
 
 def test_Sequence():
@@ -120,22 +143,29 @@ def test_Sequence():
     except AssertionError:
         pass
     else:
-        assert False, "nucl. acid type must be tested to be from om.NATYPES"
+        if not False:
+            raise AssertionError("nucl. acid type must be tested to be from om.NATYPES")
 
     ref = "stest"
     s = Sequence("ACGAT", om.NATYPES.DNA, ref)
     k4mer = [KMer(ref, 0, 4, "ACGA"), KMer(ref, 1, 5, "CGAT")]
 
-    assert k4mer == list(s.kmers(4)), (k4mer, list(s.kmers(4)))
-    assert k4mer == list(s.kmerator(s.text, 4, s.natype, ref))
+    if k4mer != list(s.kmers(4)):
+        raise AssertionError(k4mer, list(s.kmers(4)))
+    if k4mer != list(s.kmerator(s.text, 4, s.natype, ref)):
+        raise AssertionError
 
     s = Sequence("ACGATCGATCG", om.NATYPES.DNA)
-    assert s == Sequence("ACGATCGATCG", om.NATYPES.DNA)
-    assert s != Sequence("ACGATCGATCG", om.NATYPES.RNA)
+    if s != Sequence("ACGATCGATCG", om.NATYPES.DNA):
+        raise AssertionError
+    if s == Sequence("ACGATCGATCG", om.NATYPES.RNA):
+        raise AssertionError
 
     batches = [("ACGAT", 0), ("ATCGA", 3), ("GATCG", 6)]
-    assert batches == list(s.batches(3, 5))
-    assert batches == list(s.batcher(s.text, 3, 5))
+    if batches != list(s.batches(3, 5)):
+        raise AssertionError
+    if batches != list(s.batcher(s.text, 3, 5)):
+        raise AssertionError
 
     s = Sequence("ACGATCGATCG", om.NATYPES.DNA, "ref")
     klist = [
@@ -144,10 +174,12 @@ def test_Sequence():
         [KMer("ref", 4, 4 + 4, "TCGA"), KMer("ref", 5, 5 + 4, "CGAT")],
         [KMer("ref", 6, 6 + 4, "GATC"), KMer("ref", 7, 7 + 4, "ATCG")],
     ]
-    assert klist == [list(g) for g in s.kmers_batched(4, 5)]
-    assert klist == [
+    if klist != [list(g) for g in s.kmers_batched(4, 5)]:
+        raise AssertionError
+    if klist != [
         list(g) for g in s.kmerator_batched(s.text, 4, s.natype, 5, s.name)
-    ]
+    ]:
+        raise AssertionError
 
     mStrand = SequenceCoords.STRAND.MINUS
     klist = [
@@ -176,9 +208,10 @@ def test_Sequence():
             KMer("ref", 7, 7 + 4, "CGAT", strand=mStrand),
         ],
     ]
-    assert klist == [
+    if klist != [
         list(g) for g in s.kmerator_batched(s.text, 4, s.natype, 5, s.name, True)
-    ]
+    ]:
+        raise AssertionError
 
 
 def test_SequenceCount():
@@ -187,15 +220,21 @@ def test_SequenceCount():
     except AssertionError:
         pass
     else:
-        assert False, "nucl. acid type must be tested to be from om.NATYPES"
+        if not False:
+            raise AssertionError("nucl. acid type must be tested to be from om.NATYPES")
 
     sc1 = str(SequenceCoords("chr1", 0, 1e3, SequenceCoords.STRAND.PLUS))
     sc2 = str(SequenceCoords("chr1", 1e3, 2e3, SequenceCoords.STRAND.PLUS))
     sco = SequenceCount("ACGATCGATCG", [sc1, sc2], om.NATYPES.DNA)
-    assert sco.header == [sc1, sc2]
-    assert sco.seq == sco.text
+    if sco.header != [sc1, sc2]:
+        raise AssertionError
+    if sco.seq != sco.text:
+        raise AssertionError
 
     strRepr = "%s\t%s" % (sco.seq, " ".join(sco.header))
-    assert str(sco) == strRepr
-    assert sco == sco.from_text(strRepr)
-    assert str(sco) + "\n" == sco.as_text()
+    if str(sco) != strRepr:
+        raise AssertionError
+    if sco != sco.from_text(strRepr):
+        raise AssertionError
+    if str(sco) + "\n" != sco.as_text():
+        raise AssertionError

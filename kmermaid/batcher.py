@@ -86,7 +86,8 @@ class BatcherBase(object):
     @size.setter
     def size(self, size: Union[int, None]) -> None:
         if size is not None:
-            assert size >= 1
+            if size < 1:
+                raise AssertionError
             self.__size = size
 
     @property
@@ -100,7 +101,8 @@ class BatcherBase(object):
     @natype.setter
     def natype(self, natype: Optional[om.NATYPES]) -> None:
         if natype is not None:
-            assert natype in om.NATYPES
+            if natype not in om.NATYPES:
+                raise AssertionError
             self.__natype = natype
 
     @property
@@ -232,7 +234,8 @@ class BatcherThreading(BatcherBase):
         :param mode: feed mode, defaults to FEED_MODE.FLOW
         :type mode: BatcherThreading
         """
-        assert all(b.type == self.type for b in new_collection)
+        if not all(b.type == self.type for b in new_collection):
+            raise AssertionError
         if mode == self.FEED_MODE.REPLACE:
             self._batches = new_collection
         elif mode == self.FEED_MODE.FLOW:
@@ -263,7 +266,8 @@ class BatcherThreading(BatcherBase):
         :return: list of read batches
         :rtype: List[Batch]
         """
-        assert os.path.isdir(dirPath)
+        if not os.path.isdir(dirPath):
+            raise AssertionError
         threads = max(1, min(threads, mp.cpu_count()))
         if threads == 1:
             return [
@@ -333,7 +337,8 @@ class FastaBatcher(BatcherThreading):
 
     @mode.setter
     def mode(self, m):
-        assert m in self.MODE
+        if m not in self.MODE:
+            raise AssertionError
         self._mode = m
 
     @property
@@ -342,7 +347,8 @@ class FastaBatcher(BatcherThreading):
 
     @doReverseComplement.setter
     def doReverseComplement(self, rc):
-        assert type(True) == type(rc)
+        if type(True) != type(rc):
+            raise AssertionError
         self._doReverseComplement = rc
 
     def __do_over_kmers(
@@ -440,8 +446,10 @@ class FastaBatcher(BatcherThreading):
         :param feedMode: feeding mode, defaults to BatcherThreading.FEED_MODE.APPEND
         :type feedMode: BatcherThreading.FEED_MODE, optional
         """
-        assert os.path.isfile(fasta)
-        assert k > 1
+        if not os.path.isfile(fasta):
+            raise AssertionError
+        if k <= 1:
+            raise AssertionError
 
         FH = gzip.open(fasta, "rt") if fasta.endswith(".gz") else open(fasta, "r+")
         if self._mode == self.MODE.KMERS:
@@ -493,7 +501,8 @@ class FastaRecordBatcher(BatcherThreading):
 
     @doReverseComplement.setter
     def doReverseComplement(self, rc):
-        assert type(True) == type(rc)
+        if type(True) != type(rc):
+            raise AssertionError
         self._doReverseComplement = rc
 
     def do(self, record: Tuple[str, str], k: int, verbose: bool = True):

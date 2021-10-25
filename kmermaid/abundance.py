@@ -123,7 +123,8 @@ class AbundanceVector(AbundanceVectorBase):
         if not replace:
             assert_msg = "cannot update a non-zero count without replace."
             assert_msg += " (%s, %s, %d, %d)" % (ref, strand, pos, count)
-            assert self.__data[ref][strand][pos] == 0, assert_msg
+            if self.__data[ref][strand][pos] != 0:
+                raise AssertionError(assert_msg)
         self.__data[ref][strand][pos] = count
 
     def add_ref(self, ref: str, strand: str, size: int) -> None:
@@ -155,7 +156,8 @@ class AbundanceVector(AbundanceVectorBase):
         :type dirpath: str
         """
         dirpath = os.path.splitext(dirpath)[0]
-        assert not os.path.isfile(dirpath)
+        if os.path.isfile(dirpath):
+            raise AssertionError
         print('Writing output in "%s"' % dirpath)
         os.makedirs(dirpath, exist_ok=True)
         for ref in self.__data.keys():
@@ -210,7 +212,8 @@ class AbundanceVectorLocal(AbundanceVectorBase):
             if not replace:
                 assert_msg = "cannot update a non-zero count without replace."
                 assert_msg += " (%s, %s, %d, %d)" % (ref, strand, pos, count)
-                assert DH["abundances"][pos] == 0, assert_msg
+                if DH["abundances"][pos] != 0:
+                    raise AssertionError(assert_msg)
             DH["abundances"][pos] = count
 
     def add_ref(self, ref: str, strand: str, size: int) -> None:
@@ -263,7 +266,8 @@ class AbundanceVectorLocal(AbundanceVectorBase):
         :type dirpath: str
         """
         dirpath = os.path.splitext(dirpath)[0]
-        assert not os.path.isfile(dirpath)
+        if os.path.isfile(dirpath):
+            raise AssertionError
         print('Writing output in "%s"' % dirpath)
         os.makedirs(dirpath, exist_ok=True)
 

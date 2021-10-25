@@ -58,7 +58,8 @@ class Batch(object):
         :type size: int
         """
         super().__init__()
-        assert size >= 1
+        if size < 1:
+            raise AssertionError
         self.__size = int(size)
         self._remaining = self.__size
         self.__type = t
@@ -121,8 +122,10 @@ class Batch(object):
 
     @keyAttr.setter
     def keyAttr(self, k):
-        assert isinstance(k, str)
-        assert hasattr(self.type, k)
+        if not isinstance(k, str):
+            raise AssertionError
+        if not hasattr(self.type, k):
+            raise AssertionError
         self._keyAttr = k
 
     @property
@@ -131,8 +134,10 @@ class Batch(object):
 
     @fread.setter
     def fread(self, f):
-        assert isinstance(f, str)
-        assert hasattr(self.type, f)
+        if not isinstance(f, str):
+            raise AssertionError
+        if not hasattr(self.type, f):
+            raise AssertionError
         self._fread = f
 
     @property
@@ -141,8 +146,10 @@ class Batch(object):
 
     @fwrite.setter
     def fwrite(self, f):
-        assert isinstance(f, str)
-        assert hasattr(self.type, f)
+        if not isinstance(f, str):
+            raise AssertionError
+        if not hasattr(self.type, f):
+            raise AssertionError
         self._fwrite = f
 
     def sorted(self, smart: bool = False) -> Any:
@@ -206,9 +213,10 @@ class Batch(object):
         :param record
         :type record: Any
         """
-        assert (
-            type(record) == self.type
-        ), f"record must be {self.type}, not {type(record)}."
+        if (
+            type(record) != self.type
+        ):
+            raise AssertionError(f"record must be {self.type}, not {type(record)}.")
 
     def add(self, record: Any):
         """Add a record to the current batch.
@@ -220,8 +228,10 @@ class Batch(object):
         :param record
         :type record: Any
         """
-        assert not self.is_full(), "this batch is full."
-        assert not self.is_written, "this batch has been stored locally."
+        if self.is_full():
+            raise AssertionError("this batch is full.")
+        if self.is_written:
+            raise AssertionError("this batch has been stored locally.")
         self.check_record(record)
         self.__records[self._i] = record
         self._i += 1
@@ -430,7 +440,8 @@ class BatchAppendable(Batch):
         :param record: record
         :type record: Any
         """
-        assert not self.is_full(), "this batch is full."
+        if self.is_full():
+            raise AssertionError("this batch is full.")
         super().check_record(record)
         with open(self.tmp, "a+") as OH:
             output = getattr(record, self.fwrite)()

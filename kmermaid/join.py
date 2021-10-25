@@ -425,7 +425,8 @@ class KJoinerThreading(KJoiner):
 
     @batch_size.setter
     def batch_size(self, batch_size):
-        assert type(0) == type(batch_size)
+        if type(0) != type(batch_size):
+            raise AssertionError
         assert batch_size >= 2
         self.__batch_size = batch_size
 
