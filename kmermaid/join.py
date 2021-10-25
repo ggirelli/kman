@@ -32,7 +32,7 @@ from kmermaid.batcher import BatcherThreading
 from kmermaid.seq import SequenceCoords, SequenceCount
 
 
-class Crawler(object):
+class Crawler:
     """Crawling system.
 
     Allows for crawling along Batch records, or to group the records based on
@@ -123,7 +123,7 @@ class Crawler(object):
         yield (current_headers, current_seq)
 
 
-class KJoiner(object):
+class KJoiner:
     """K-way joining system.
 
     Perform K-way joining of Batches of elements compatible with the Crawler

@@ -12,7 +12,7 @@ from typing import Iterator, List, Tuple
 import oligo_melting as om  # type: ignore
 
 
-class SequenceCoords(object):
+class SequenceCoords:
     """Reference genome window coordinates system.
 
     Variables:

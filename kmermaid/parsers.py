@@ -9,7 +9,7 @@ import io
 from typing import Iterator, List, Optional, Tuple
 
 
-class SmartFastaParser(object):
+class SmartFastaParser:
     """Fasta parser with minimally open buffer.
 
     Extends the SimpleFastaParser function to avoid 'too many open files' issue.
