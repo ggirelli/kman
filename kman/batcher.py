@@ -17,7 +17,7 @@ import oligo_melting as om  # type: ignore
 import os
 import tempfile
 from tqdm import tqdm  # type: ignore
-from typing import List, Optional, Type, Union
+from typing import List, Type, Union
 
 
 class BatcherBase(object):

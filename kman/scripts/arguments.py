@@ -70,7 +70,8 @@ def batch_mode() -> click.Option:
             [m.name for m in list(BatcherThreading.FEED_MODE)], case_sensitive=True
         ),
         default=BatcherThreading.FEED_MODE.APPEND.name,
-        help=f"""HELP PAGE MISSING!!! Default: {BatcherThreading.FEED_MODE.APPEND.name}""",
+        help=f"""HELP PAGE MISSING!!!
+        Default: {BatcherThreading.FEED_MODE.APPEND.name}""",
     )
 
 

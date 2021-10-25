@@ -10,7 +10,6 @@ from kman.io import input_file_exists, set_tempdir
 from kman.join import KJoiner, KJoinerThreading
 from kman.scripts import arguments as args
 import logging
-import os
 import resource
 import tempfile
 from typing import Optional

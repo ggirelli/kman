@@ -11,7 +11,6 @@ from kman.scripts import arguments as args
 import logging
 import os
 import tempfile
-from typing import List
 
 
 @click.command(
