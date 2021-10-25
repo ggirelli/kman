@@ -165,8 +165,7 @@ class Batch(object):
             return sorted(
                 self.record_gen(smart), key=lambda x: getattr(x, self.keyAttr)
             )
-        else:
-            return sorted(self.record_gen(smart))
+        return sorted(self.record_gen(smart))
 
     def _record_gen_from_handle(self, TH: IO, smart=False):
         if self.isFasta:
@@ -263,12 +262,11 @@ class Batch(object):
                 for r in self.sorted()
                 if not type(None) == type(r)
             ]
-        else:
-            return [
-                getattr(r, self.fwrite)()
-                for r in self.record_gen()
-                if type(None) != type(r)
-            ]
+        return [
+            getattr(r, self.fwrite)()
+            for r in self.record_gen()
+            if type(None) != type(r)
+        ]
 
     def write(self, doSort: bool = False, force: bool = False) -> None:
         """Write batch to disk.

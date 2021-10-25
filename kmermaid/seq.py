@@ -98,8 +98,7 @@ class SequenceCoords(object):
         """
         if SequenceCoords.STRAND.PLUS == strand:
             return SequenceCoords.STRAND.MINUS
-        else:
-            return SequenceCoords.STRAND.PLUS
+        return SequenceCoords.STRAND.PLUS
 
     def __repr__(self):
         return "%s:%d-%d:%s" % (self.ref, self.start, self.end, self.strand.label)

@@ -276,13 +276,12 @@ class BatcherThreading(BatcherBase):
                 Batch.from_file(os.path.join(dirPath, fname), t, isFasta)
                 for fname in tqdm(os.listdir(dirPath))
             ]
-        else:
-            return Parallel(n_jobs=threads, verbose=11)(
-                delayed(Batch.from_file)(
-                    os.path.join(dirPath, fname), t, isFasta, reSort=reSort
-                )
-                for fname in os.listdir(dirPath)
+        return Parallel(n_jobs=threads, verbose=11)(
+            delayed(Batch.from_file)(
+                os.path.join(dirPath, fname), t, isFasta, reSort=reSort
             )
+            for fname in os.listdir(dirPath)
+        )
 
 
 class FastaBatcher(BatcherThreading):
