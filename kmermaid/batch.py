@@ -260,7 +260,7 @@ class Batch(object):
             return [
                 getattr(r, self.fwrite)()
                 for r in self.sorted()
-                if not type(None) == type(r)
+                if not type(None) is type(r)
             ]
         return [
             getattr(r, self.fwrite)()
