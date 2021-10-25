@@ -420,7 +420,7 @@ class FastaBatcher(BatcherThreading):
             b.write(True)
 
         Parallel(n_jobs=self.threads, verbose=11)(
-            delayed(do_sort_write)(b) for b in self.collection if 0 != b.current_size
+            delayed(do_sort_write)(b) for b in self.collection if b.current_size != 0
         )
 
     def do(
