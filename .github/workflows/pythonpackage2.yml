@@ -42,17 +42,17 @@ jobs:
 
     - name: Run style checks
       run: |
-        poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        poetry run flake8 . --count --exit-zero --max-complexity=5 --max-line-length=88 --ignore=E203 --statistics
-        poetry run black . --check
-        poetry run mypy .
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --max-complexity=5 --max-line-length=88 --ignore=E203 --statistics
+        black . --check
+        mypy .
 
     - name: Run tests
       run: |
-        poetry run pytest -c pyproject.toml
+        pytest -c pyproject.toml
 
     - name: Run safety checks
       run: |
         poetry check
-        poetry run safety check --full-report
-        poetry run bandit -ll --recursive hooks
+        safety check --full-report
+        bandit -ll --recursive hooks
