@@ -15,7 +15,7 @@ import numpy as np  # type: ignore
 from tqdm import tqdm  # type: ignore
 
 
-class AbundanceVectorBase(object):
+class AbundanceVectorBase:
     """AbundanceVector basic structure.
 
     Just an empty interface for basic AbundanceVector classes.

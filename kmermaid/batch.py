@@ -16,7 +16,7 @@ from kmermaid.parsers import SmartFastaParser
 from kmermaid.seq import KMer
 
 
-class Batch(object):
+class Batch:
     """Batch container.
 
     Records in the Batch are accessible through the record_gen and sorted

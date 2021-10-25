@@ -24,7 +24,7 @@ from kmermaid.seq import KMer, Sequence
 TMP_DIR = tempfile.TemporaryDirectory
 
 
-class BatcherBase(object):
+class BatcherBase:
     """Basic batching system.
 
     Builds a collection of equally sized batches. In each Batch, a record is an
