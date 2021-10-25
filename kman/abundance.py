@@ -37,7 +37,7 @@ class AbundanceVectorBase(object):
         :raises AssertionError: if length is not compatible
         """
         self._ks.add(k)
-        if 1 != len(self._ks):
+        if len(self._ks) != 1:
             raise AssertionError(f"inconsistent sequence lengths: {self._ks}")
 
     def add_count(

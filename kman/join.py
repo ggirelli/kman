@@ -74,7 +74,7 @@ class Crawler(object):
         :rtype: Iterator[Tuple[str, str]]
         :raises AssertionError: when the batches are not recognized
         """
-        if not all(type(b) in [Batch, BatchAppendable] for b in batches):
+        if any(type(b) not in [Batch, BatchAppendable] for b in batches):
             raise AssertionError()
 
         if self.doSort:
