@@ -3,147 +3,83 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import argparse
-import gzip
-from kman.asserts import enable_rich_assert
+import click  # type: ignore
+from kman.const import CONTEXT_SETTINGS
 from kman.batcher import BatcherThreading, FastaBatcher
-from kman.scripts import arguments as ap
+from kman.io import copy_batches, input_file_exists, set_tempdir
+from kman.scripts import arguments as args
 import logging
 import os
-import shutil
 import tempfile
-from tqdm import tqdm  # type: ignore
+from typing import List
 
 
-def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
-    parser = subparsers.add_parser(
-        "batch",
-        description="""
-Generate batches of k-mers from a fasta file.
+@click.command(
+    name="batch",
+    context_settings=CONTEXT_SETTINGS,
+    help="""
+Generate batches of k-mers from an INPUT fasta file.
+
+Batches are written to an OUTPUT folder, which must be empty or non-existent.
+The INPUT file can be gzipped.
 """,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="Create k-mer batches from a fasta file.",
-    )
-
-    parser.add_argument(
-        "input",
-        type=str,
-        help="""
-    Path to input fasta file. Can be gzipped (ending in ".gz")""",
-    )
-    parser.add_argument(
-        "output",
-        type=str,
-        help="""
-        Path to output folder, which must be empty or non-existent.""",
-    )
-    parser.add_argument(
-        "k",
-        type=int,
-        help="""Oligonucleotide (substring) length in nucleotides.""",
-    )
-
-    parser.add_argument(
-        "-R",
-        dest="do_reverse",
-        action="store_const",
-        const=True,
-        default=False,
-        help="""Reverse complement sequences.""",
-    )
-
-    advanced = parser.add_argument_group("advanced arguments")
-    advanced.add_argument(
-        "-s",
-        type=str,
-        help=f'''Choose scanning mode. See description for more details.
-        Default: "{FastaBatcher.MODE.KMERS.name}"''',
-        default=FastaBatcher.MODE.KMERS.name,
-        choices=[m.name for m in list(FastaBatcher.MODE)],
-    )
-    advanced.add_argument(
-        "-b", type=int, default=1e6, help="""Number of kmers per batch. Default: 1e6"""
-    )
-    advanced.add_argument(
-        "-m",
-        type=str,
-        help=f'''Choose batching mode. See description for more details.
-        Default: "{BatcherThreading.FEED_MODE.APPEND.name}"''',
-        default=BatcherThreading.FEED_MODE.APPEND.name,
-        choices=[m.name for m in list(BatcherThreading.FEED_MODE)],
-    )
-    advanced.add_argument(
-        "-t", type=int, default=1, help="""Number of threads for parallelization."""
-    )
-    advanced.add_argument(
-        "-T",
-        type=str,
-        default=tempfile.gettempdir(),
-        help=f'''Temporary folder path. Default: "{tempfile.gettempdir()}"''',
-    )
-    advanced.add_argument(
-        "-C",
-        dest="do_compress",
-        action="store_const",
-        const=True,
-        default=False,
-        help="""Compress output files.""",
-    )
-
-    parser = ap.add_version_option(parser)
-    parser.set_defaults(parse=parse_arguments, run=run)
-
-    return parser
-
-
-@enable_rich_assert
-def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
-    args.o = args.output
-    args.m = BatcherThreading.FEED_MODE[args.m]
-    args.s = FastaBatcher.MODE[args.s]
-
-    assert os.path.isfile(
-        args.input
-    ), f"path to an existing fasta file expected, file not found: '{args.input}'"
-
-    if os.path.isdir(args.o):
-        assert 0 == len(
-            os.listdir(args.o)
-        ), "output folder must be empty or non-existent."
-
-    return args
-
-
-def run_batching(args: argparse.Namespace, batcher: FastaBatcher) -> None:
-    batchList = tqdm([b for b in batcher.collection if os.path.isfile(b.tmp)])
-    if args.do_compress:
-        for b in batchList:
-            gzname = os.path.join(args.o, f"{os.path.basename(b.tmp)}.gz")
-            OH = gzip.open(gzname, "wb")
-            with open(b.tmp, "rb") as IH:
-                for line in IH:
-                    OH.write(line)
-            OH.close()
-    else:
-        for b in batchList:
-            shutil.copy(b.tmp, args.o)
-
-
-@enable_rich_assert
-def run(args: argparse.Namespace) -> None:
-    if not os.path.isdir(args.T):
-        os.makedirs(args.T, exist_ok=True)
-    tempfile.tempdir = args.T
-
-    batcher = FastaBatcher(size=args.b, threads=args.t)
-    batcher.mode = args.s
-    batcher.doReverseComplement = args.do_reverse
-    batcher.do(args.input, args.k, args.m)
-    os.makedirs(args.o, exist_ok=True)
+)
+@args.input_path()
+@args.output_path(dir_okay=True)
+@args.k()
+@args.reverse()
+@args.scan_mode()
+@args.batch_size()
+@args.batch_mode()
+@args.threads()
+@args.tmp()
+@args.compress()
+def run(
+    input_path: str,
+    output_path: str,
+    k: int,
+    reverse: bool = False,
+    scan_mode: str = FastaBatcher.MODE.KMERS.name,
+    batch_size: int = 1000000,
+    batch_mode: str = BatcherThreading.FEED_MODE.APPEND.name,
+    threads: int = 1,
+    tmp: str = tempfile.gettempdir(),
+    compress: bool = False,
+) -> None:
+    prepare_run(input_path, output_path, tmp)
 
     try:
-        run_batching(args, batcher)
+        copy_batches(
+            FastaBatcher(
+                scan_mode=FastaBatcher.MODE[scan_mode],
+                reverse=reverse,
+                size=batch_size,
+                threads=threads,
+            )
+            .do(input_path, k, BatcherThreading.FEED_MODE[batch_mode])
+            .collection,
+            output_path,
+            compress,
+        )
     except IOError as e:
-        logging.error(f"Unable to write to output directory '{args.o}'.\n{e}")
+        logging.error(f"Unable to write to output directory '{output_path}'.\n{e}")
 
     logging.info("That's all! :smiley:")
+
+
+def prepare_run(input_path: str, output_path: str, tmp: str) -> None:
+    """Prepare output folders and checks input before running.
+
+    Args:
+        input_path (str): path to input FASTA
+        output_path (str): path to output folder
+        tmp (str): path to temporary folder
+
+    Raises:
+        AssertionError: if output folder exists or is not empty
+    """
+    input_file_exists(input_path)
+    if os.path.isdir(output_path) and len(os.listdir(output_path)) == 0:
+        raise AssertionError("output folder must be empty or non-existent.")
+    set_tempdir(tmp)
+    os.makedirs(output_path, exist_ok=True)
