@@ -18,7 +18,7 @@ from joblib import Parallel, delayed  # type: ignore
 from tqdm import tqdm  # type: ignore
 
 from kman.batch import Batch
-from kman.io import SmartFastaParser
+from kman.parsers import SmartFastaParser
 from kman.seq import KMer, Sequence
 
 TMP_DIR = tempfile.TemporaryDirectory
@@ -57,6 +57,7 @@ class BatcherBase(object):
         natype: Optional[om.NATYPES] = None,
         tmp: Optional[Union[TMP_DIR, str]] = None,
     ):
+
         """Initializes BatcherBase
 
         :param size: batching size
@@ -76,7 +77,7 @@ class BatcherBase(object):
             self._tmp = tmp
         else:
             self._tmp = tempfile.gettempdir()
-        self._batches = [Batch.from_batcher(self)]
+        self._batches = [Batch.from_batcher(self.type, self.size, self.tmp)]
 
     @property
     def size(self) -> int:
@@ -117,7 +118,7 @@ class BatcherBase(object):
         """Add a new empty batch to the current collection."""
         if self.collection[-1].is_full():
             self.collection[-1].write()
-            self._batches.append(Batch.from_batcher(self))
+            self._batches.append(Batch.from_batcher(self.type, self.size, self.tmp))
 
     def add_record(self, record: Any):
         """Add a record to the current collection.
@@ -187,7 +188,7 @@ class BatcherThreading(BatcherBase):
         self,
         size: int,
         threads: int = 1,
-        natype: Optional[om.NATYPE] = None,
+        natype: Optional[om.NATYPES] = None,
         tmp: Optional[str] = None,
     ):
         """Initialize BatcherThreading
@@ -222,7 +223,7 @@ class BatcherThreading(BatcherBase):
     def feed_collection(
         self,
         new_collection: List[Batch],
-        mode: "BatcherThreading".FEED_MODE = FEED_MODE.FLOW,
+        mode: "BatcherThreading.FEED_MODE" = FEED_MODE.FLOW,
     ):
         """Feed a new collection to the batcher
 
@@ -545,7 +546,7 @@ class FastaRecordBatcher(BatcherThreading):
         :return: built Batch
         :rtype: Batch
         """
-        batch = Batch.from_batcher(batcher)
+        batch = Batch.from_batcher(batcher.type, batcher.size, batcher.tmp)
         recordGen = Sequence.kmerator(
             seq, k, batcher.natype, name, i, rc=batcher.doReverseComplement
         )

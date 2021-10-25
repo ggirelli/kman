@@ -12,8 +12,7 @@ from typing import IO, Any, Iterator, List, Type
 
 from Bio.SeqIO.FastaIO import SimpleFastaParser  # type: ignore
 
-from kman.batcher import BatcherBase
-from kman.io import SmartFastaParser
+from kman.parsers import SmartFastaParser
 from kman.seq import KMer
 
 
@@ -201,7 +200,7 @@ class Batch(object):
                 if type(None) != type(record):
                     yield record
 
-    def check_record(self, record: Any):
+    def check_record(self, record: Any) -> None:
         """Check that record type matches the Batch.
 
         :param record
@@ -326,19 +325,24 @@ class Batch(object):
         return batch
 
     @staticmethod
-    def from_batcher(batcher: BatcherBase, size: int = 1) -> "Batch":
+    def from_batcher(
+        batch_type: Type, size: int = 1, tmp: str = tempfile.gettempdir()
+    ) -> "Batch":
         """Initialize a batch using a Batcher for default values.
 
-        :param batcher: parent batcher
-        :type batcher: BatcherBase
+        :param batch_type: type of items in the batch
+        :type batch_type: Type
         :param size: records per batch, defaults to 1
         :type size: int
+        :param tmp: path to temporary folder
+        :type tmp: str
         :return: new empty batch
         :rtype: Batch
+        :raises AssertionError: if size is 0 or negative.
         """
-        assert batcher.size >= 1
-        size = max(int(batcher.size), size)
-        return Batch(batcher.type, batcher.tmp, size)
+        if size < 1:
+            raise AssertionError(f"size cannot be 0 or negative: {size}")
+        return Batch(batch_type, tmp, size)
 
     def reset(self):
         """Reset the batch.
@@ -510,21 +514,24 @@ class BatchAppendable(Batch):
         return batch
 
     @staticmethod
-    def from_batcher(batcher: BatcherBase, size: int = 1):
-        """Initialize a Batch.
+    def from_batcher(
+        batch_type: Type, size: int = 1, tmp: str = tempfile.gettempdir()
+    ) -> "Batch":
+        """Initialize a batch using a Batcher for default values.
 
-        Uses a Batcher to set default values.
-
-        :param batcher: parent batcher
-        :type batcher: BatcherBase
+        :param batch_type: type of items in the batch
+        :type batch_type: Type
         :param size: records per batch, defaults to 1
         :type size: int
-        :return: batch
+        :param tmp: path to temporary folder
+        :type tmp: str
+        :return: new empty batch
         :rtype: Batch
+        :raises AssertionError: if size is 0 or negative.
         """
-        assert batcher.size >= 1
-        size = max(int(batcher.size), size)
-        return BatchAppendable(batcher.type, batcher.tmp, size)
+        if size < 1:
+            raise AssertionError(f"size cannot be 0 or negative: {size}")
+        return BatchAppendable(batch_type, tmp, size)
 
     def reset(self):
         """Reset the batch.

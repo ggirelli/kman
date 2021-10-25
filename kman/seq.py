@@ -7,7 +7,7 @@
 import logging
 import re
 from enum import Enum, unique
-from typing import Iterator, List, Tuple, Type
+from typing import Iterator, List, Tuple
 
 import oligo_melting as om  # type: ignore
 
@@ -85,7 +85,7 @@ class SequenceCoords(object):
         )
 
     @staticmethod
-    def rev(strand: "SequenceCoords".STRAND) -> "SequenceCoords".STRAND:
+    def rev(strand: "SequenceCoords.STRAND") -> "SequenceCoords.STRAND":
         """Provide reverse strand.
 
         :param strand: current strand
@@ -148,13 +148,13 @@ class Sequence(om.Sequence):
     def __eq__(self, other):
         return super().__eq__(other)
 
-    def kmers(self, k: int) -> Iterator[Type["Sequence"]]:
+    def kmers(self, k: int) -> Iterator["Sequence"]:
         """Extract k-mers from Sequence.
 
         :param k: k-mer length.
         :type k: int
         :return: Iterator.
-        :rtype: Iterator[Type[Sequence]]
+        :rtype: Iterator[Sequence]
         """
         return self.kmerator(
             self.text, k, self.natype, self.name, rc=self.doReverseComplement
@@ -177,28 +177,31 @@ class Sequence(om.Sequence):
         """
         return self.batcher(self.text, k, batchSize)
 
-    def kmers_batched(self, k: int, batchSize: int = 1) -> Iterator[Type["Sequence"]]:
+    def kmers_batched(
+        self, k: int, batchSize: int = 1
+    ) -> Iterator[Iterator["Sequence"]]:
         """Extract batches of k-mers from Sequence.
 
         :param k: k-mer length
         :type k: int
         :param batchSize: records per batch, defaults to 1
         :type batchSize: int
-        :return: k-mer batch generator
-        :rtype: Iterator[Type[Sequence]]
+        :yield: k-mer batch generator
+        :rtype: Iterator[Sequence]
         """
         assert batchSize >= 1
         if batchSize == 1:
-            return self.kmers(k)
+            yield self.kmers(k)
         else:
-            return self.kmerator_batched(
+            for x in self.kmerator_batched(
                 self.text,
                 k,
                 self.natype,
                 batchSize,
                 self.name,
                 rc=self.doReverseComplement,
-            )
+            ):
+                yield x
 
     @staticmethod
     def __kmer_yielding(i, seq, prefix, k, t, offset, strand, rc) -> Iterator["KMer"]:
@@ -336,7 +339,7 @@ class Sequence(om.Sequence):
     @staticmethod
     def kmerator_batched(
         seq: str, k: int, t: om.NATYPES, batchSize: int = 1, prefix="ref", rc=False
-    ) -> Iterator["KMer"]:
+    ) -> Iterator[Iterator["Sequence"]]:
         """Extract batches of k-mers from sequence.
 
         :param seq: sequence
@@ -351,16 +354,14 @@ class Sequence(om.Sequence):
         :type prefix: str
         :param rc: do perform reverse-complement, defaults to False
         :type rc: bool
-        :return: k-mer iterator
-        :rtype: Iterator[Kmer]
-        :yield: k-mer batches
+        :yield: k-mer iterator
         :rtype: Iterator[Kmer]
         """
         assert batchSize >= 1
         if batchSize == 1:
-            return Sequence.kmerator(seq, k, t, prefix, rc=rc)
+            yield Sequence.kmerator(seq, k, t, prefix, rc=rc)
         for (seq2beKmered, i) in Sequence.batcher(seq, k, batchSize):
-            yield from Sequence.kmerator(seq2beKmered, k, t, prefix, offset=i, rc=rc)
+            yield Sequence.kmerator(seq2beKmered, k, t, prefix, offset=i, rc=rc)
 
 
 class KMer(Sequence):
