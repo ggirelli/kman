@@ -234,7 +234,7 @@ class BatcherThreading(BatcherBase):
         :param mode: feed mode, defaults to FEED_MODE.FLOW
         :type mode: BatcherThreading
         """
-        if not all(b.type == self.type for b in new_collection):
+        if any(b.type != self.type for b in new_collection):
             raise AssertionError
         if mode == self.FEED_MODE.REPLACE:
             self._batches = new_collection

@@ -37,16 +37,14 @@ def test_Batch():
     except AssertionError:
         pass
     else:
-        if not False:
-            raise AssertionError("record type must be tested")
+        raise AssertionError("record type must be tested")
 
     try:
         b.add(1)
     except AssertionError:
         pass
     else:
-        if not False:
-            raise AssertionError("record type must be tested when adding it")
+        raise AssertionError("record type must be tested when adding it")
 
     b.add("First record")
     if b.current_size != 1:
@@ -157,16 +155,14 @@ def test_BatchAppendable():
     except AssertionError:
         pass
     else:
-        if not False:
-            raise AssertionError("record type must be tested")
+        raise AssertionError("record type must be tested")
 
     try:
         b.add(1)
     except AssertionError:
         pass
     else:
-        if not False:
-            raise AssertionError("record type must be tested when adding it")
+        raise AssertionError("record type must be tested when adding it")
 
     b.add("First record")
     if b.current_size != 1:
