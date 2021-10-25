@@ -493,7 +493,6 @@ class BatchAppendable(Batch):
         :return: Batch
         :rtype: Batch
         """
-
         if isFasta:
             FH = gzip.open(path, "rt") if path.endswith(".gz") else open(path, "r+")
             if smart:
