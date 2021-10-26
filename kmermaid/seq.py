@@ -271,9 +271,7 @@ class Sequence(om.Sequence):
         :yield: k-mer generator
         :rtype: KMer
         """
-        yield from Sequence.__kmer_yielding_with_rc(
-            i, seq, prefix, k, t, offset, strand
-        )
+        yield from Sequence.__kmer_yielding_with(i, seq, prefix, k, t, offset, strand)
         yield KMer(
             prefix,
             i + offset,
