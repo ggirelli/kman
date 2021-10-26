@@ -205,7 +205,34 @@ class Sequence(om.Sequence):
             )
 
     @staticmethod
-    def __kmer_yielding(i, seq, prefix, k, t, offset, strand, rc) -> Iterator["KMer"]:
+    def __kmer_yielding(
+        i: int,
+        seq: str,
+        prefix: str,
+        k: int,
+        t: om.NATYPES,
+        offset: int,
+        strand: SequenceCoords.STRAND,
+    ) -> Iterator["KMer"]:
+        """Yield a k-mer.
+
+        :param i: k-mer start position
+        :type i: int
+        :param seq: parent sequence
+        :type seq: str
+        :param prefix: reference record name
+        :type prefix: str
+        :param k: k-mer length
+        :type k: int
+        :param t: nucleic acid type
+        :type t: om.NATYPES
+        :param offset: offset of start position within reference record
+        :type offset: int
+        :param strand: strandedness
+        :type strand: SequenceCoords.STRAND
+        :yield: k-mer generator
+        :rtype: KMer
+        """
         yield KMer(
             prefix,
             i + offset,
@@ -217,15 +244,35 @@ class Sequence(om.Sequence):
 
     @staticmethod
     def __kmer_yielding_with_rc(
-        i, seq, prefix, k, t, offset, strand, rc
+        i: int,
+        seq: str,
+        prefix: str,
+        k: int,
+        t: om.NATYPES,
+        offset: int,
+        strand: SequenceCoords.STRAND,
     ) -> Iterator["KMer"]:
-        yield KMer(
-            prefix,
-            i + offset,
-            i + offset + k,
-            seq[i : i + k],
-            t,
-            strand=strand,
+        """Yield a k-mer and its reverse complement.
+
+        :param i: k-mer start position
+        :type i: int
+        :param seq: parent sequence
+        :type seq: str
+        :param prefix: reference record name
+        :type prefix: str
+        :param k: k-mer length
+        :type k: int
+        :param t: nucleic acid type
+        :type t: om.NATYPES
+        :param offset: offset of start position within reference record
+        :type offset: int
+        :param strand: strandedness
+        :type strand: SequenceCoords.STRAND
+        :yield: k-mer generator
+        :rtype: KMer
+        """
+        yield from Sequence.__kmer_yielding_with_rc(
+            i, seq, prefix, k, t, offset, strand
         )
         yield KMer(
             prefix,
@@ -280,7 +327,7 @@ class Sequence(om.Sequence):
                     )
                 )
                 continue
-            yield from kmer_yielder(i, seq, prefix, k, t, offset, strand, rc)
+            yield from kmer_yielder(i, seq, prefix, k, t, offset, strand)
 
     @staticmethod
     def kmerator(
