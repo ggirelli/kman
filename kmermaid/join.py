@@ -605,7 +605,17 @@ class SeqCountBatcher(BatcherThreading):
             fjoin(headers, seq, **kwargs)
 
     @staticmethod
-    def from_parent(parent, n_batches):
+    def from_parent(parent: KJoinerThreading, n_batches: int) -> "SeqCountBatcher":
+        """Instantiate class from parent.
+
+        :param parent: parent joiner
+        :type parent: KJoinerThreading
+        :param n_batches: number of batches
+        :type n_batches: int
+        :raises AssertionError: if parent type is incompatible
+        :return: new instance
+        :rtype: SeqCountBatcher
+        """
         if type(parent) is not KJoinerThreading:
             raise AssertionError
         return SeqCountBatcher(n_batches, parent.threads, tmp=parent.tmp)
