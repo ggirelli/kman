@@ -47,7 +47,7 @@ class SequenceCoords:
         )
     )
 
-    def __init__(self, ref, start, end, strand=STRAND.PLUS):
+    def __init__(self, ref: str, start: int, end: int, strand: STRAND = STRAND.PLUS):
         super(SequenceCoords, self).__init__()
         if start < 0:
             raise AssertionError
@@ -425,13 +425,29 @@ class KMer(Sequence):
 
     def __init__(
         self,
-        chrom,
-        start,
-        end,
-        seq,
-        t=om.NATYPES.DNA,
-        strand=SequenceCoords.STRAND.PLUS,
+        chrom: str,
+        start: int,
+        end: int,
+        seq: str,
+        t: om.NATYPES = om.NATYPES.DNA,
+        strand: SequenceCoords.STRAND = SequenceCoords.STRAND.PLUS,
     ):
+        """Initialize KMer instance.
+
+        :param chrom: reference record name
+        :type chrom: str
+        :param start: k-mer start position
+        :type start: int
+        :param end: k-mer end position
+        :type end: int
+        :param seq: k-mer sequence
+        :type seq: str
+        :param t: nucleic acid type, defaults to om.NATYPES.DNA
+        :type t: om.NATYPES
+        :param strand: strandedness, defaults to SequenceCoords.STRAND.PLUS
+        :type strand: SequenceCoords.STRAND
+        :raises AssertionError: if length and start/end do not match
+        """
         if len(seq) != end - start:
             raise AssertionError
         super().__init__(seq, t)
@@ -470,9 +486,7 @@ class KMer(Sequence):
             coords.ref, coords.start, coords.end, record[1], t, strand=coords.strand
         )
 
-    @staticmethod
-    def from_file(*args, **kwargs):
-        return KMer.from_fasta(*args, **kwargs)
+    from_file = from_fasta
 
     def as_fasta(self) -> str:
         """Fasta-like representation.
@@ -539,9 +553,7 @@ class SequenceCount(Sequence):
         seq, headers = line.strip().split("\t")
         return SequenceCount(seq, headers.split(" "), t)
 
-    @staticmethod
-    def from_file(*args, **kwargs):
-        return SequenceCount.from_text(*args, **kwargs)
+    from_file = from_text
 
     def __repr__(self):
         return "%s\t%s" % (self.seq, " ".join(self.header))
