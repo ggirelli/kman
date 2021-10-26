@@ -37,6 +37,7 @@ class AbundanceVectorBase:
         if len(self._ks) != 1:
             raise AssertionError(f"inconsistent sequence lengths: {self._ks}")
 
+    @abstractmethod
     def add_count(
         self, ref: str, strand: str, pos: int, count: int, k: int, replace: bool = False
     ) -> None:
@@ -54,8 +55,9 @@ class AbundanceVectorBase:
         :type k: int
         :param replace: allow for replacement of non-zero counts, defaults to False
         :type replace: bool
+        :raises NotImplementedError: abstract method
         """
-        self.check_length(k)
+        raise NotImplementedError
 
     @abstractmethod
     def add_ref(self, ref: str, strand: str, size: int) -> None:
@@ -119,6 +121,7 @@ class AbundanceVector(AbundanceVectorBase):
         :raises AssertionError: if replace is disallowed and count is not 0
         """
         super().add_count(ref, strand, pos, count, k, replace)
+        self.check_length(k)
         self.add_ref(ref, strand, pos + 1)
         if not replace and self.__data[ref][strand][pos] != 0:
             raise AssertionError(
@@ -208,6 +211,7 @@ class AbundanceVectorLocal(AbundanceVectorBase):
         :raises AssertionError: if abundances are non-zero without replace
         """
         super().add_count(ref, strand, pos, count, k, replace)
+        self.check_length(k)
         self.add_ref(ref, strand, pos)
         with h5py.File(self.refpath(ref, strand)) as DH:
             if not replace:

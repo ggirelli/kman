@@ -366,15 +366,13 @@ class KJoiner:
         else:
             kwargs["vector"].write_to(kwargs["OH"])
 
-    def join(self, batches: List[Batch], outpath: str, doSort: bool = False) -> None:
+    def join(self, batches: List[Batch], outpath: str) -> None:
         """Perform k-joining of batches.
 
         :param batches: list of batches
         :type batches: List[Batch]
         :param outpath: path to output
         :type outpath: str
-        :param doSort: re-sort batched records, defaults to False
-        :type doSort: bool
         """
         kwargs = self._pre_join(outpath)
 
@@ -461,18 +459,16 @@ class KJoinerThreading(KJoiner):
 
         self._post_join(**kwargs)
 
-    def join(self, batches: List[Batch], outpath: str, doSort: bool = False) -> None:
+    def join(self, batches: List[Batch], outpath: str) -> None:
         """Perform k-joining of batches.
 
         :param batches: list of batches
         :type batches: List[Batch]
         :param outpath: path to output
         :type outpath: str
-        :param doSort: re-sort batched records, defaults to False
-        :type doSort: bool
         """
         if self.threads == 1:
-            super().join(batches, outpath, self.doSort)
+            super().join(batches, outpath)
         else:
             self.__parallel_join(batches, outpath)
 
