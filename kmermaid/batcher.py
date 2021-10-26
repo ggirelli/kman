@@ -297,6 +297,18 @@ class FastaBatcher(BatcherThreading):
     """
 
     class MODE(Enum):
+        """Scanning modes.
+
+        Used with do() method to start batching.
+
+        Extends:
+                Enum
+
+        Variables:
+                KMERS {number} -- Parallelize over KMERs.
+                RECORDS {number} -- Parallelize over FASTA records.
+        """
+
         KMERS = 1
         RECORDS = 2
 
