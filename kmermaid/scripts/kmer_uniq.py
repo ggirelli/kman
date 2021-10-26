@@ -45,6 +45,31 @@ def run(
     tmp: str = tempfile.gettempdir(),
     re_sort: bool = False,
 ) -> None:
+    """Run kmer_uniq script.
+
+    :param input_path: input FASTA file
+    :type input_path: str
+    :param output_path: path to output file
+    :type output_path: str
+    :param k: k-mer length
+    :type k: int
+    :param reverse: perform reverse-complement operation, defaults to False
+    :type reverse: bool
+    :param scan_mode: scanning mode, defaults to FastaBatcher.MODE.KMERS.name
+    :type scan_mode: str
+    :param batch_size: records per batch, defaults to 1000000
+    :type batch_size: int
+    :param batch_mode: batching mode, defaults to BatcherThreading.FEED_MODE.APPEND.name
+    :type batch_mode: str
+    :param previous_batches: path to folder with previous batches, defaults to None
+    :type previous_batches: Optional[str]
+    :param threads: for parallelization, defaults to 1
+    :type threads: int
+    :param tmp: path to temporary folder, defaults to tempfile.gettempdir()
+    :type tmp: str
+    :param re_sort: re-sort previous batches, defaults to False
+    :type re_sort: bool
+    """
     input_file_exists(input_path)
     set_tempdir(tmp)
 

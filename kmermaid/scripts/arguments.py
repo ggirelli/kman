@@ -12,6 +12,11 @@ from kmermaid.join import KJoiner
 
 
 def input_path():
+    """Add click.argument for input path.
+
+    :return: click.argument decorator
+    :rtype: click.Argument
+    """
     return click.argument(
         "input_path",
         metavar="INPUT",
@@ -20,6 +25,15 @@ def input_path():
 
 
 def output_path(file_okay=False, dir_okay=False):
+    """Add click.argument for output path.
+
+    :param file_okay: is output a file, defaults to False
+    :type file_okay: bool, optional
+    :param dir_okay: is output a directory, defaults to False
+    :type dir_okay: bool, optional
+    :return: click.argument decorator
+    :rtype: click.Argument
+    """
     return click.argument(
         "output_path",
         metavar="OUTPUT",
@@ -30,10 +44,20 @@ def output_path(file_okay=False, dir_okay=False):
 
 
 def k():
+    """Add click.argument for k-mer length.
+
+    :return: click.argument decorator
+    :rtype: click.Argument
+    """
     return click.argument("k", type=click.INT)
 
 
 def reverse():
+    """Add click.option for reverse complementing.
+
+    :return: click.option decorator
+    :rtype: click.Option
+    """
     return click.option(
         "--reverse",
         "-r",
@@ -43,6 +67,11 @@ def reverse():
 
 
 def scan_mode():
+    """Add click.option for scanning mode.
+
+    :return: click.option decorator
+    :rtype: click.Option
+    """
     return click.option(
         "--scan-mode",
         "-s",
@@ -55,6 +84,11 @@ def scan_mode():
 
 
 def batch_size():
+    """Add click.option for batch size.
+
+    :return: click.option decorator
+    :rtype: click.Option
+    """
     return click.option(
         "--batch-size",
         "-b",
@@ -65,6 +99,11 @@ def batch_size():
 
 
 def batch_mode():
+    """Add click.option for batching mode.
+
+    :return: click.option decorator
+    :rtype: click.Option
+    """
     return click.option(
         "--batch-mode",
         "-m",
@@ -78,6 +117,11 @@ def batch_mode():
 
 
 def previous_batches():
+    """Add click.option for previous batches.
+
+    :return: click.option decorator
+    :rtype: click.Option
+    """
     return click.option(
         "--previous-batches",
         "-B",
@@ -87,6 +131,11 @@ def previous_batches():
 
 
 def count_mode():
+    """Add click.option for counting mode.
+
+    :return: click.option decorator
+    :rtype: click.Option
+    """
     return click.option(
         "--count-mode",
         "-m",
@@ -100,6 +149,11 @@ def count_mode():
 
 
 def memory_mode():
+    """Add click.option for memory mode.
+
+    :return: click.option decorator
+    :rtype: click.Option
+    """
     return click.option(
         "--memory-mode",
         "-M",
@@ -110,6 +164,11 @@ def memory_mode():
 
 
 def threads():
+    """Add click.option for threads.
+
+    :return: click.option decorator
+    :rtype: click.Option
+    """
     return click.option(
         "--threads",
         "-t",
@@ -120,6 +179,11 @@ def threads():
 
 
 def tmp():
+    """Add click.option for temporary folder.
+
+    :return: click.option decorator
+    :rtype: click.Option
+    """
     return click.option(
         "--tmp",
         "-T",
@@ -130,6 +194,11 @@ def tmp():
 
 
 def compress():
+    """Add click.option for output compression.
+
+    :return: click.option decorator
+    :rtype: click.Option
+    """
     return click.option(
         "--compress",
         "-C",
@@ -139,6 +208,11 @@ def compress():
 
 
 def re_sort():
+    """Add click.option for re-sorting of batches.
+
+    :return: click.option decorator
+    :rtype: click.Option
+    """
     return click.option(
         "--re-sort",
         "-R",
