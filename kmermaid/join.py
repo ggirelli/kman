@@ -4,6 +4,7 @@
 @description: methods for batch joining
 """
 
+import logging
 import multiprocessing as mp
 import tempfile
 from enum import Enum
@@ -100,14 +101,14 @@ class Crawler:
         :type batches: List[Type[Batch]]
         :yield: (header, sequence)
         :rtype: Tuple[List[str], str]
-        :raises StopIteration: if the batches are empty
         """
         crawler = self.do_records(batches)
 
         try:
             first_record = next(crawler)
         except StopIteration:
-            raise StopIteration("nothing to crawl through")
+            logging.error("nothing to crawl")
+            return
 
         current_seq = first_record[1]
         current_headers = [first_record[0]]
