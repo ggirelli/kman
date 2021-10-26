@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
-## [0.0.1]
+## [1.0.0]
+### Added
+- `pre-commit` hooks and new GitHub Actions workflow.
+- Docstrings for all classes and methods.
 
-[0.0.1] https://github.com/ggirelli/kman/releases/tag/v0.0.1
+### Changed
+- Switched from `argparse` to `click`.
+- Heavily refactored.
+
+### Fixed
+- Multiple issue identified by DeepSource.io.
+
+[0.0.1] https://github.com/ggirelli/kmermaid/releases/tag/v1.0.0

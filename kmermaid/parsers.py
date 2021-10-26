@@ -6,10 +6,10 @@
 
 import gzip
 import io
-from typing import List, Tuple
+from typing import Iterator, List, Optional, Tuple
 
 
-class SmartFastaParser(object):
+class SmartFastaParser:
     """Fasta parser with minimally open buffer.
 
     Extends the SimpleFastaParser function to avoid 'too many open files' issue.
@@ -28,18 +28,18 @@ class SmartFastaParser(object):
 
     def __init__(self, FH):
         super(SmartFastaParser, self).__init__()
-        if str == type(FH):
+        if type(FH) is str:
             if FH.endswith(".gz"):
                 self.__compressed = True
                 self.__FH = gzip.open(FH, "rt")
             else:
                 self.__FH = open(FH, "r+")
-        elif io.TextIOWrapper == type(FH):
+        elif type(FH) is io.TextIOWrapper:
             self.__FH = FH
             if self.__FH.name.endswith(".gz"):
                 self.__compressed = True
         else:
-            assert False, "type error."
+            raise AssertionError("type error.")
 
     def __reopen(self):
         """Re-open the buffer and seek the last recorded position."""
@@ -51,7 +51,11 @@ class SmartFastaParser(object):
         self.__FH.seek(self.__pos)
 
     def __skip_blank_and_comments(self) -> Tuple[str, bool]:
-        # Skip any text before the first record (e.g. blank lines, comments)
+        """Skip any text before the first record (e.g. blank lines, comments)
+
+        :return: next content line, and False if EOF or empty line was reached
+        :rtype: Tuple[str, bool]
+        """
         while True:
             line = self.__FH.readline()
             self.__pos = self.__FH.tell()
@@ -62,6 +66,11 @@ class SmartFastaParser(object):
         return (line, True)
 
     def __parse_sequence(self) -> List[str]:
+        """Read all sequence for current record.
+
+        :return: sequence lines
+        :rtype: List[str]
+        """
         lines = []
         line = self.__FH.readline()
         while True:
@@ -69,13 +78,12 @@ class SmartFastaParser(object):
                 break
             if line[0] == ">":
                 break
-            else:
-                self.__pos = self.__FH.tell()
+            self.__pos = self.__FH.tell()
             lines.append(line.rstrip())
             line = self.__FH.readline()
         return lines
 
-    def parse(self):
+    def parse(self) -> Iterator[Tuple[str, str]]:
         """Iterate over Fasta records as string tuples.
 
         For each record a tuple of two strings is returned, the FASTA title
@@ -84,15 +92,23 @@ class SmartFastaParser(object):
         identifier (the first word) and comment or description.
 
         Additionally, keep the Fasta handler open only when strictly necessary.
+
+        :raises ValueError: when fasta does not pass format check
+        :yield: (header, sequence)
+        :rtype: Tuple[str, str]
+        :raises AssertionError: if file is not parsable
+        :raises ValueError: if a header line does not start with '>'
+        :raises AssertionError: if the EOF is wrongly parsed
         """
         self.__reopen()
+        line: Optional[str] = None
         line, parsable = self.__skip_blank_and_comments()
-        assert parsable, "premature end of file or empty file"
+        if not parsable:
+            raise AssertionError("premature end of file or empty file")
 
         while True:
             self.__reopen()
-            if line is None:
-                line = self.__FH.readline()
+            line = self.__FH.readline() if line is None else line
 
             if not line:
                 return
@@ -109,8 +125,15 @@ class SmartFastaParser(object):
 
             line = None
 
-        assert False, "Should not reach this line"
+        raise AssertionError("Should not reach this line")
 
     @staticmethod
-    def parse_file(path):
+    def parse_file(path: str) -> Iterator[Tuple[str, str]]:
+        """Parse a FASTA file in a smarter way.
+
+        :param path: path to FASTA file
+        :type path: str
+        :return: FASTA record iterator
+        :rtype: Iterator[Tuple[str, str]]
+        """
         return SmartFastaParser(path).parse()

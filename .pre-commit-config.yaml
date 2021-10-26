@@ -1,0 +1,49 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+default_language_version:
+    python: python3.8
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: "v4.0.1"
+    hooks:
+    -   id: check-added-large-files
+    -   id: check-ast
+    -   id: check-docstring-first
+    -   id: check-yaml
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: "v0.910-1"
+    hooks:
+    -   id: mypy
+-   repo: https://github.com/psf/black
+    rev: "21.9b0"
+    hooks:
+    -   id: black
+-   repo:  https://github.com/PyCQA/flake8
+    rev: "4.0.1"
+    hooks:
+    -   id: flake8
+        name: flake8-1
+        args: ["--count", "--select=E9,F63,F7,F82", "--show-source", "--statistics"]
+    -   id: flake8
+        additional_dependencies: [darglint]
+        name: flake8-2
+        args: ["--count", "--max-complexity=5", "--max-line-length=88", "--ignore=E203", "--statistics", "--docstring-style=SPHINX", "--strictness=short"]
+-   repo: https://github.com/codespell-project/codespell
+    rev: v2.1.0
+    hooks:
+    -   id: codespell
+        entry: codespell --ignore-words=ignore-spelling-words.txt
+        language: python
+        types: [text]
+-   repo: https://github.com/pycqa/isort
+    rev: 5.8.0
+    hooks:
+    -   id: isort
+        args: ["--multi-line=3", "--tc"]
+        name: isort (python)
+    -   id: isort
+        name: isort (cython)
+        types: [cython]
+    -   id: isort
+        name: isort (pyi)
+        types: [pyi]

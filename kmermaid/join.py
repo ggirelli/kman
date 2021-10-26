@@ -4,21 +4,36 @@
 @description: methods for batch joining
 """
 
+import logging
+import multiprocessing as mp
+import tempfile
 from enum import Enum
 from heapq import merge
 from itertools import chain
-from joblib import Parallel, delayed  # type: ignore
-from kman.abundance import AbundanceVector, AbundanceVectorLocal
-from kman.batch import Batch, BatchAppendable
-from kman.batcher import BatcherThreading
-from kman.seq import SequenceCoords, SequenceCount
-import multiprocessing as mp
+from typing import (
+    IO,
+    Any,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Type,
+)
+
 import numpy as np  # type: ignore
-import tempfile
+import oligo_melting as om  # type: ignore
+from joblib import Parallel, delayed  # type: ignore
 from tqdm import tqdm  # type: ignore
 
+from kmermaid.abundance import AbundanceVector, AbundanceVectorLocal
+from kmermaid.batch import Batch, BatchAppendable
+from kmermaid.batcher import BatcherThreading
+from kmermaid.seq import SequenceCoords, SequenceCount
 
-class Crawler(object):
+
+class Crawler:
     """Crawling system.
 
     Allows for crawling along Batch records, or to group the records based on
@@ -34,73 +49,75 @@ class Crawler(object):
     verbose = True
     desc = ""
 
-    def __init__(self):
-        super().__init__()
-
-    def count_records(self, batches):
+    @staticmethod
+    def count_records(batches: List[Batch]) -> int:
         """Count records across batches.
 
-        Arguments:
-                batches {list} -- list of Batches
-
-        Returns:
-                int -- number of records
+        :param batches: list of batches
+        :type batches: List[Batch]
+        :return: number of records
+        :rtype: int
         """
-        return sum([b.current_size for b in batches])
+        return sum(b.current_size for b in batches)
 
-    def do_records(self, batches):
+    def do_records(self, batches: List[Batch]) -> Iterator[Tuple[str, str]]:
         """Crawl through the batches.
 
         Produces a generator function that yields (r.header, r.seq) for each
         record r across batches. Batches are crawled through their r.record_gen
         if self.doSort==False, otherwise using r.sorted.
 
-        Arguments:
-                batches {list} -- list of Batches
-
-        Returns:
-                generator -- record generator
+        :param batches: list of batches
+        :type batches: List[Type[Batch]]
+        :yield: iterator across all batches
+        :rtype: Iterator[Tuple[str, str]]
+        :raises AssertionError: when the batches are not recognized
         """
-        assert all([type(b) in [Batch, BatchAppendable] for b in batches])
+        if any(type(b) not in [Batch, BatchAppendable] for b in batches):
+            raise AssertionError()
 
         if self.doSort:
             generators = [
-                ((r.header, r.seq) for r in b.sorted(self.doSmart))
+                ((str(r.header), str(r.seq)) for r in b.sorted(self.doSmart))
                 for b in batches
-                if not type(None) == type(b)
+                if type(None) != type(b)
             ]
+
         else:
             generators = [
-                ((r.header, r.seq) for r in b.record_gen(self.doSmart))
+                ((str(r.header), str(r.seq)) for r in b.record_gen(self.doSmart))
                 for b in batches
-                if not type(None) == type(b)
+                if type(None) is not type(b)
             ]
 
-        crawler = merge(*generators, key=lambda x: x[1])
+        yield from merge(*generators, key=lambda x: x[1])
 
-        return crawler
-
-    def do_batch(self, batches):
+    def do_batch(self, batches: List[Batch]) -> Iterator[Tuple[List[str], str]]:
         """Group records from batches based on sequence.
 
         Crawls into groups of records from input batches.
 
-        Arguments:
-                batches {list} -- list of Batches
-
-        Yields:
-                tuple -- (headers, sequence)
+        :param batches: list of batches
+        :type batches: List[Type[Batch]]
+        :yield: (header, sequence)
+        :rtype: Tuple[List[str], str]
         """
         crawler = self.do_records(batches)
 
-        first_record = next(crawler)
+        try:
+            first_record = next(crawler)
+        except StopIteration:
+            logging.error("nothing to crawl")
+            return
+
         current_seq = first_record[1]
         current_headers = [first_record[0]]
 
-        if self.verbose:
-            crawler = tqdm(
-                crawler, initial=1, desc=self.desc, total=self.count_records(batches)
-            )
+        crawler = (
+            tqdm(crawler, initial=1, desc=self.desc, total=self.count_records(batches))
+            if self.verbose
+            else crawler
+        )
 
         for record in crawler:
             if current_seq == record[1]:
@@ -113,7 +130,7 @@ class Crawler(object):
         yield (current_headers, current_seq)
 
 
-class KJoiner(object):
+class KJoiner:
     """K-way joining system.
 
     Perform K-way joining of Batches of elements compatible with the Crawler
@@ -165,18 +182,24 @@ class KJoiner(object):
     __memory = DEFAULT_MEMORY
     __join_function = None
 
-    def __init__(self, mode=None, memory=None):
-        """Initialize KJoiner.
+    def __init__(self, mode: MODE = None, memory: MEMORY = None):
+        """Initialize KJoiner
 
-        Keyword Arguments:
-                mode {KJoiner.MODE} -- (default: {None})
+        :param mode: joining mode, defaults to None
+        :type mode: MODE
+        :param memory: storage mode, defaults to None
+        :type memory: MEMORY
+        :raises AssertionError: if joining mode is unrecognized
+        :raises AssertionError: if storage mode is unrecognized
         """
         super().__init__()
         if mode is not None:
-            assert mode in self.MODE
+            if mode not in self.MODE:
+                raise AssertionError
             self.__mode = mode
         if memory is not None:
-            assert memory in self.MEMORY
+            if memory not in self.MEMORY:
+                raise AssertionError
             self.__memory = memory
         self.__set_join_function()
 
@@ -186,7 +209,8 @@ class KJoiner(object):
 
     @mode.setter
     def mode(self, mode):
-        assert mode in self.MODE
+        if mode not in self.MODE:
+            raise AssertionError
         self.__mode = mode
         self.__set_join_function()
 
@@ -196,7 +220,8 @@ class KJoiner(object):
 
     @memory.setter
     def memory(self, memory):
-        assert memory in self.MEMORY
+        if memory not in self.MEMORY:
+            raise AssertionError
         self.__memory = memory
         self.__set_join_function()
 
@@ -216,45 +241,64 @@ class KJoiner(object):
             self.__join_function = self.join_vector_count_masked
 
     @staticmethod
-    def join_unique(headers, seq, OH, **kwargs):
-        """Perform unique joining.
+    def join_unique(
+        headers: List[str], seq: str, OH: IO, **kwargs
+    ) -> Optional[Tuple[str, str]]:
+        """Perform uniq joining, retain only unique records.
 
-        Retains only unique records.
-
-        Arguments:
-                OH {io.TextIOWrapper} -- buffer to ouptut file
-                headers {list} -- list of headers with seq
-                seq {str} -- sequence
+        :param headers: headers of records with the current sequence
+        :type headers: List[str]
+        :param seq: sequence
+        :type seq: str
+        :param OH: output file handle
+        :type OH: IO
+        :param **kwargs: capture additional arguments
+        :return: (header, sequence)
+        :rtype: Optional[Tuple[str, str]]
         """
-        if len(headers) == 1:
-            batch = (headers[0], seq)
-            OH.write(">%s\n%s\n" % batch)
-            return batch
+        if len(headers) != 1:
+            return None
+        batch = (headers[0], seq)
+        OH.write(">%s\n%s\n" % batch)
+        return batch
 
     @staticmethod
-    def join_sequence_count(headers, seq, OH, **kwargs):
+    def join_sequence_count(
+        headers: List[str], seq: str, OH: IO, **kwargs
+    ) -> Tuple[str, int]:
         """Perform sequence counting through joining.
 
         Counts sequence occurrences.
 
-        Arguments:
-                OH {io.TextIOWrapper} -- buffer to output file
-                headers {list} -- list of headers with seq
-                seq {str} -- sequence
+        :param headers: headers of records with current sequence
+        :type headers: List[str]
+        :param seq: sequence
+        :type seq: str
+        :param OH: output file handle
+        :type OH: IO
+        :param **kwargs: capture additional arguments
+        :return: (sequence, count)
+        :rtype: Tuple[str, int]
         """
         batch = (seq, len(headers))
         OH.write("%s\t%d\n" % batch)
         return batch
 
     @staticmethod
-    def join_vector_count(headers, seq, OH, vector, **kwargs):
+    def join_vector_count(
+        headers: List[str], seq: str, OH: IO, vector: AbundanceVector, **kwargs
+    ) -> None:
         """Generate abundance vectors through joining.
 
-        Arguments:
-                OH {io.TextIOWrapper} -- buffer to output file
-                headers {list} -- list of headers with seq
-                seq {str} -- sequence
-                vector {AbundanceVector}
+        :param headers: headers of records with current sequence
+        :type headers: List[str]
+        :param seq: sequence
+        :type seq: str
+        :param OH: output file handle
+        :type OH: IO
+        :param **kwargs: capture additional arguments
+        :param vector: vector to populate
+        :type vector: AbundanceVector
         """
         hcount = len(headers)
         for header in headers:
@@ -264,78 +308,78 @@ class KJoiner(object):
             )
 
     @staticmethod
-    def join_vector_count_masked(headers, seq, OH, vector, **kwargs):
+    def join_vector_count_masked(
+        headers: List[str], seq: str, OH: IO, vector: AbundanceVector, **kwargs
+    ) -> None:
         """Generate abundance vectors through joining.
 
-        Arguments:
-                OH {io.TextIOWrapper} -- buffer to output file
-                headers {list} -- list of headers with seq
-                seq {str} -- sequence
-                vector {AbundanceVector}
+        :param headers: headers of records with current sequence
+        :type headers: List[str]
+        :param seq: sequence
+        :type seq: str
+        :param OH: output file handle
+        :type OH: IO
+        :param **kwargs: capture additional arguments
+        :param vector: vector to populate
+        :type vector: AbundanceVector
         """
-        headers = [SequenceCoords.from_str(h) for h in headers]
-        if not 1 == len(headers):
-            refList, refCounts = np.unique([h.ref for h in headers], return_counts=True)
+        coords = [SequenceCoords.from_str(h) for h in headers]
+        if len(coords) != 1:
+            refList, refCounts = np.unique([h.ref for h in coords], return_counts=True)
 
-            if not 1 == len(refList):
-                for h in headers:
+            if len(refList) != 1:
+                for h in coords:
                     hcount = refCounts[refList != h.ref].sum()
                     vector.add_count(
                         h.ref, h.strand.label, int(h.start), hcount, len(seq)
                     )
 
-    def _pre_join(self, outpath):
+    def _pre_join(self, outpath: str) -> Dict[str, Any]:
         """Prepares for joining.
 
-        Perform appropriate actiond (mode-based):
+        Perform appropriate action (mode-based):
         - open buffer to output file
         - create AbundanceVector instance
 
-        Arguments:
-                outpath {str} -- path to output
-
-        Returns:
-                dict -- keyword arguments for join function
+        :param outpath: path to output
+        :type outpath: str
+        :return: keyword arguments for join functions
+        :rtype: Dict[str, Any]
+        :raises AssertionError: ifmemory mode is neither NORMAL nor LOCAL
         """
-        kwargs = {"OH": outpath}
         if not self.mode.name.startswith("VEC_"):
-            kwargs["OH"] = open(outpath, "w+")
-        else:
-            if self.memory == self.MEMORY.NORMAL:
-                kwargs["vector"] = AbundanceVector()
-            elif self.memory == self.MEMORY.LOCAL:
-                kwargs["vector"] = AbundanceVectorLocal()
-            else:
-                assert self.memory in [self.MEMORY.NORMAL, self.MEMORY.LOCAL]
+            return dict(OH=open(outpath, "w+"))
+
+        kwargs: Dict[str, Any] = {"OH": outpath}
+        if self.memory == self.MEMORY.NORMAL:
+            kwargs["vector"] = AbundanceVector()
+        elif self.memory == self.MEMORY.LOCAL:
+            kwargs["vector"] = AbundanceVectorLocal()
+        elif self.memory not in [self.MEMORY.NORMAL, self.MEMORY.LOCAL]:
+            raise AssertionError
         return kwargs
 
-    def _post_join(self, **kwargs):
+    def _post_join(self, **kwargs) -> None:
         """Wraps up after joining.
 
         Perform appropriate actiond (mode-based):
         - close buffer to output file
         - write AbundanceVector to file
 
-        Arguments:
-                **kwargs {dict} -- join function keyword arguments
+        :param **kwargs: capture additional arguments
         """
         if not self.mode.name.startswith("VEC_"):
             kwargs["OH"].close()
         else:
             kwargs["vector"].write_to(kwargs["OH"])
 
-    def join(self, batches, outpath, doSort=False):
-        """Join batches.
+    def join(self, batches: List[Batch], outpath: str) -> None:
+        """Perform k-joining of batches.
 
-        Perform k-joining of batches.
-
-        Arguments:
-                batches {list} -- list of Batch instances
-                outpath {str} -- path to output file
-
-        Keyword Arguments:
-                doSort {bool} -- whether batches need to be sorted
-                                                 (default: {False})
+        :param batches: list of batches
+        :type batches: List[Batch]
+        :param outpath: path to output
+        :type outpath: str
         """
         kwargs = self._pre_join(outpath)
 
@@ -367,16 +411,14 @@ class KJoinerThreading(KJoiner):
     __batch_size = 10
     __doSort = False
 
-    def __init__(self, mode=None, memory=None):
-        super().__init__(mode, memory)
-
     @property
     def doSort(self):
         return self.__doSort
 
     @doSort.setter
     def doSort(self, doSort):
-        assert type(True) == type(doSort)
+        if type(True) is not type(doSort):
+            raise AssertionError
         self.__doSort = doSort
 
     @property
@@ -393,22 +435,25 @@ class KJoinerThreading(KJoiner):
 
     @batch_size.setter
     def batch_size(self, batch_size):
-        assert type(0) == type(batch_size)
-        assert batch_size >= 2
+        if type(0) != type(batch_size):
+            raise AssertionError
+        if batch_size < 2:
+            raise AssertionError
         self.__batch_size = batch_size
 
     @property
     def tmp(self):
         if self._tmp is None:
-            self._tmp = tempfile.TemporaryDirectory(prefix="kmanJoin")
+            self._tmp = tempfile.TemporaryDirectory(prefix="kmermaidJoin")
         return self._tmp
 
-    def __parallel_join(self, recordBatches, outpath):
-        """Joins sequenceCount batches in paralle.
+    def __parallel_join(self, recordBatches: List[Batch], outpath: str) -> None:
+        """Join sequenceCount batches in parallel.
 
-        Arguments:
-                recordBatches {list} -- list of Batches
-                outpath {str} -- path to output
+        :param recordBatches: list of batches
+        :type recordBatches: List[Batch]
+        :param outpath: path to output
+        :type outpath: str
         """
         kwargs = self._pre_join(outpath)
 
@@ -421,17 +466,16 @@ class KJoinerThreading(KJoiner):
 
         self._post_join(**kwargs)
 
-    def join(self, batches, outpath):
-        """Join batches.
+    def join(self, batches: List[Batch], outpath: str) -> None:
+        """Perform k-joining of batches.
 
-        Perform k-joining of batches.
-
-        Arguments:
-                batches {list} -- list of Batch instances
-                outpath {str} -- path to output file
+        :param batches: list of batches
+        :type batches: List[Batch]
+        :param outpath: path to output
+        :type outpath: str
         """
-        if 1 == self.threads:
-            super().join(batches, outpath, self.doSort)
+        if self.threads == 1:
+            super().join(batches, outpath)
         else:
             self.__parallel_join(batches, outpath)
 
@@ -453,16 +497,26 @@ class SeqCountBatcher(BatcherThreading):
     _type = SequenceCount
     __doSort = False
 
-    def __init__(self, n_batches=10, threads=1, size=None, natype=None, tmp=None):
+    def __init__(
+        self,
+        n_batches: int = 10,
+        threads: int = 1,
+        size: int = 1000000,
+        natype: om.NATYPES = om.NATYPES.DNA,
+        tmp: str = tempfile.gettempdir(),
+    ):
         """Initialize SeqCountBatcher instance.
 
-        Keyword Arguments:
-                n_batches {number} -- number of batches at a time (default: {10})
-                threads {int} -- number of threads for parallelization
-                                 (default: {1})
-                size {int} -- batch size
-                natype {om.NATYPES} -- nucleic acid type
-                tmp {tempfile.TemporaryDirectory}
+        :param n_batches: number of batches at a time, defaults to 10
+        :type n_batches: int
+        :param threads: for parallelization, defaults to 1
+        :type threads: int
+        :param size: records per batch, defaults to 1000000
+        :type size: int
+        :param natype: nucleic acid type, defaults to om.NATYPES.DNA
+        :type natype: om.NATYPES
+        :param tmp: temporary folder, defaults to tempfile.gettempdir()
+        :type tmp: str
         """
         super().__init__(threads, size, natype, tmp)
         self.n_batches = n_batches
@@ -473,17 +527,18 @@ class SeqCountBatcher(BatcherThreading):
 
     @doSort.setter
     def doSort(self, doSort):
-        assert type(True) == type(doSort)
+        if type(True) is not type(doSort):
+            raise AssertionError
         self.__doSort = doSort
 
-    def do(self, recordBatch):
+    def do(self, recordBatch: List[Batch]) -> None:
         """Start batching the records.
 
         Batch seq.Sequence sub-class batch.Batch records into seq.SequenceCounts
         batch.Batch instances.
 
-        Arguments:
-                recordBatch {list} -- list of Batches
+        :param recordBatch: list of batches
+        :type recordBatch: List[Batch]
         """
         batchList = [
             recordBatch[i : min(len(recordBatch), i + self.n_batches)]
@@ -498,16 +553,24 @@ class SeqCountBatcher(BatcherThreading):
         self.feed_collection(batches, self.FEED_MODE.REPLACE)
 
     @staticmethod
-    def build_batch(recordBatchList, recordType, tmpDir, doSort=False):
-        """Builds a Batch.
+    def build_batch(
+        recordBatchList: List[Batch],
+        recordType: Type,
+        tmpDir: str,
+        doSort: bool = False,
+    ) -> Batch:
+        """Build a batch.
 
-        Arguments:
-                recordBatchList {list} -- list of Batches
-                recordType {class} -- batch record type
-                tmpDir {str} -- path to temporary directory
-
-        Returns:
-                Batch
+        :param recordBatchList: list of batches.
+        :type recordBatchList: List[Batch]
+        :param recordType: batched record type.
+        :type recordType: Type
+        :param tmpDir: path to temporary folder.
+        :type tmpDir: str
+        :param doSort: re-sort batches, defaults to False
+        :type doSort: bool
+        :return: new batch
+        :rtype: Batch
         """
         crawling = Crawler()
         crawling.doSort = doSort
@@ -529,12 +592,12 @@ class SeqCountBatcher(BatcherThreading):
 
         return batch
 
-    def join(self, fjoin, **kwargs):
-        """Joins SequenceCount batches.
+    def join(self, fjoin: Callable, **kwargs) -> None:
+        """Join SequenceCount batches.
 
-        Arguments:
-                fjoin {function} -- join function
-                **kwargs {dict} -- join function keyword arguments
+        :param fjoin: join function
+        :type fjoin: Callable
+        :param **kwargs: additional arguments for join function
         """
         crawler = Crawler()
         crawler.doSmart = True
@@ -544,6 +607,17 @@ class SeqCountBatcher(BatcherThreading):
             fjoin(headers, seq, **kwargs)
 
     @staticmethod
-    def from_parent(parent, n_batches):
-        assert KJoinerThreading == type(parent)
+    def from_parent(parent: KJoinerThreading, n_batches: int) -> "SeqCountBatcher":
+        """Instantiate class from parent.
+
+        :param parent: parent joiner
+        :type parent: KJoinerThreading
+        :param n_batches: number of batches
+        :type n_batches: int
+        :raises AssertionError: if parent type is incompatible
+        :return: new instance
+        :rtype: SeqCountBatcher
+        """
+        if type(parent) is not KJoinerThreading:
+            raise AssertionError
         return SeqCountBatcher(n_batches, parent.threads, tmp=parent.tmp)

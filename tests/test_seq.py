@@ -3,8 +3,9 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from kman.seq import KMer, Sequence, SequenceCoords, SequenceCount
 import oligo_melting as om  # type: ignore
+
+from kmermaid.seq import KMer, Sequence, SequenceCoords, SequenceCount
 
 
 def test_SequenceCoords_start():
@@ -13,7 +14,7 @@ def test_SequenceCoords_start():
     except AssertionError:
         pass
     else:
-        assert False, "start must be tested to be >=0"
+        raise AssertionError("start must be tested to be >=0")
 
 
 def test_SequenceCoords_end():
@@ -22,7 +23,7 @@ def test_SequenceCoords_end():
     except AssertionError:
         pass
     else:
-        assert False, "end must be tested to be >=0"
+        raise AssertionError("end must be tested to be >=0")
 
 
 def test_SequenceCoords_strand():
@@ -31,7 +32,7 @@ def test_SequenceCoords_strand():
     except AssertionError:
         pass
     else:
-        assert False, "strand must be tested to be from SequenceCoords.STRAND"
+        raise AssertionError("strand must be tested to be from SequenceCoords.STRAND")
 
 
 def test_SequenceCoords_2():
@@ -59,7 +60,7 @@ def test_KMer_start():
     except AssertionError:
         pass
     else:
-        assert False, "start must be tested to be >=0"
+        raise AssertionError("start must be tested to be >=0")
 
 
 def test_KMer_end():
@@ -68,7 +69,7 @@ def test_KMer_end():
     except AssertionError:
         pass
     else:
-        assert False, "end must be tested to be >=0"
+        raise AssertionError("end must be tested to be >=0")
 
 
 def test_KMer_strand():
@@ -77,7 +78,7 @@ def test_KMer_strand():
     except AssertionError:
         pass
     else:
-        assert False, "strand must be tested to be from SequenceCoords.STRAND"
+        raise AssertionError("strand must be tested to be from SequenceCoords.STRAND")
 
 
 def test_KMer_NATYPE():
@@ -86,7 +87,7 @@ def test_KMer_NATYPE():
     except AssertionError:
         pass
     else:
-        assert False, "nucl. acid type must be tested to be from om.NATYPES"
+        raise AssertionError("nucl. acid type must be tested to be from om.NATYPES")
 
 
 def test_KMer_length():
@@ -95,7 +96,7 @@ def test_KMer_length():
     except AssertionError:
         pass
     else:
-        assert False, "length must be tested for match"
+        raise AssertionError("length must be tested for match")
 
 
 def test_KMer():
@@ -119,7 +120,7 @@ def test_Sequence():
     except AssertionError:
         pass
     else:
-        assert False, "nucl. acid type must be tested to be from om.NATYPES"
+        raise AssertionError("nucl. acid type must be tested to be from om.NATYPES")
 
     ref = "stest"
     s = Sequence("ACGAT", om.NATYPES.DNA, ref)
@@ -186,7 +187,7 @@ def test_SequenceCount():
     except AssertionError:
         pass
     else:
-        assert False, "nucl. acid type must be tested to be from om.NATYPES"
+        raise AssertionError("nucl. acid type must be tested to be from om.NATYPES")
 
     sc1 = str(SequenceCoords("chr1", 0, 1e3, SequenceCoords.STRAND.PLUS))
     sc2 = str(SequenceCoords("chr1", 1e3, 2e3, SequenceCoords.STRAND.PLUS))
