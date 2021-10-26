@@ -271,7 +271,7 @@ class Sequence(om.Sequence):
         :yield: k-mer generator
         :rtype: KMer
         """
-        yield from Sequence.__kmer_yielding_with(i, seq, prefix, k, t, offset, strand)
+        yield from Sequence.__kmer_yielding(i, seq, prefix, k, t, offset, strand)
         yield KMer(
             prefix,
             i + offset,
@@ -553,8 +553,13 @@ class SequenceCount(Sequence):
 
     from_file = from_text
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s\t%s" % (self.seq, " ".join(self.header))
 
-    def as_text(self):
+    def as_text(self) -> str:
+        """Returns a text representation of the current instance.
+
+        :return: current instance as string
+        :rtype: str
+        """
         return str(self) + "\n"
