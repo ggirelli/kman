@@ -7,7 +7,7 @@
 
 [PyPi](https://pypi.org/project/kmermaid/) | [docs](https://ggirelli.github.io/kmermaid/)
 
-`kmermaid` is a Python3.8+ package containing tools for selection of complementary oligonucleotides to build iFISH probes. It is based on our previous `ifpd` package, but works with a different and more detailed database format, allowing for more precise control on the probe design process. Read the online [documentation](https://ggirelli.github.io/kmermaid/) for more details.
+`kmermaid` is a Python3.8+ package containing tools for extraction of k-mers from an input sequence. Furthermore, it can count the sequences or extract only unique sequences. The approach of `kmermaid` is a straightforward n-way join of batches of k-mers, thus alleviating the toll that similar tools can exhert on memory while requiring fast I/O speeds on disk (SSDs are recommended). Read the online [documentation](https://ggirelli.github.io/kmermaid/) for more details.
 
 ## Requirements
 
