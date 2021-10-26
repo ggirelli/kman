@@ -34,12 +34,12 @@ class SequenceCoords:
                 MINUS {number} -- negative strand
         """
 
-        PLUS = 0
-        MINUS = 1
+        PLUS: int = 0
+        MINUS: int = 1
 
         @property
         def label(self):
-            return "+-"[self.value]
+            return "+-"[int(self.value)]
 
     regexp = re.compile(
         "".join(
