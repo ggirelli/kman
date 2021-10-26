@@ -238,18 +238,54 @@ class AbundanceVectorLocal(AbundanceVectorBase):
                     DH["abundances"].resize((size + 1,))
 
     @staticmethod
-    def refname(ref, strand) -> str:
+    def refname(ref: str, strand: str) -> str:
+        """Get reference filename
+
+        :param ref: reference name
+        :type ref: str
+        :param strand: strandedness
+        :type strand: str
+        :return: reference filename
+        :rtype: str
+        """
         return "%s___%s.hdf5" % (ref, strand)
 
-    def refpath(self, ref, strand):
+    def refpath(self, ref: str, strand: str) -> str:
+        """Get path to reference file.
+
+        :param ref: reference name
+        :type ref: str
+        :param strand: strandedness
+        :type strand: str
+        :return: path to reference file
+        :rtype: str
+        """
         return os.path.join(self.tmp, self.refname(ref, strand))
 
-    def has_ref(self, ref, strand):
+    def has_ref(self, ref: str, strand: str) -> bool:
+        """Check if reference exists.
+
+        :param ref: reference name.
+        :type ref: str
+        :param strand: strandedness
+        :type strand: str
+        :return: if reference exists
+        :rtype: bool
+        """
         refname = self.refname(ref, strand)
         refpath = self.refpath(ref, strand)
         return os.path.isfile(refpath) and refname in self._dataList
 
-    def mk_ref_file(self, ref, strand, size):
+    def mk_ref_file(self, ref: str, strand: str, size: int) -> None:
+        """Generates reference file.
+
+        :param ref: reference record name
+        :type ref: str
+        :param strand: strandedness
+        :type strand: str
+        :param size: reference size
+        :type size: int
+        """
         if not self.has_ref(ref, strand):
             self._dataList.add(self.refname(ref, strand))
             with h5py.File(self.refpath(ref, strand)) as DH:

@@ -47,6 +47,29 @@ def run(
     tmp: str = tempfile.gettempdir(),
     compress: bool = False,
 ) -> None:
+    """Run kmer_batch script.
+
+    :param input_path: path to input FASTA
+    :type input_path: str
+    :param output_path: path to output folder
+    :type output_path: str
+    :param k: k-mer length
+    :type k: int
+    :param reverse: perform reverse complement operation, defaults to False
+    :type reverse: bool
+    :param scan_mode: scanning mode, defaults to FastaBatcher.MODE.KMERS.name
+    :type scan_mode: str
+    :param batch_size: records per batch, defaults to 1000000
+    :type batch_size: int
+    :param batch_mode: batching mode, defaults to BatcherThreading.FEED_MODE.APPEND.name
+    :type batch_mode: str
+    :param threads: for parallelization, defaults to 1
+    :type threads: int
+    :param tmp: path to temporary folder, defaults to tempfile.gettempdir()
+    :type tmp: str
+    :param compress: compress output, defaults to False
+    :type compress: bool
+    """
     prepare_run(input_path, output_path, tmp)
 
     try:

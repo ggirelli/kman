@@ -214,7 +214,12 @@ class BatcherThreading(BatcherBase):
     def threads(self, t):
         self.__threads = max(1, min(t, mp.cpu_count()))
 
-    def __flow_batches(self, collection) -> None:
+    def __flow_batches(self, collection: List[Batch]) -> None:
+        """Flow a batch collection into the current batcher.
+
+        :param collection: batches to pour into current instance
+        :type collection: List[Batch]
+        """
         for _ in tqdm(range(len(collection)), desc="Flowing"):
             batch = collection.pop()
             for record in batch.record_gen():
@@ -434,7 +439,12 @@ class FastaBatcher(BatcherThreading):
 
         self.feed_collection(list(itertools.chain(*batchCollections)), feedMode)
 
-        def do_sort_write(b):
+        def do_sort_write(b: Batch) -> None:
+            """Trigger Batch.write()
+
+            :param b: input batch to write
+            :type b: Batch
+            """
             b.write(True)
 
         Parallel(n_jobs=self.threads, verbose=11)(

@@ -47,7 +47,7 @@ class SequenceCoords:
         )
     )
 
-    def __init__(self, ref, start, end, strand=STRAND.PLUS):
+    def __init__(self, ref: str, start: int, end: int, strand: STRAND = STRAND.PLUS):
         super(SequenceCoords, self).__init__()
         if start < 0:
             raise AssertionError
@@ -205,7 +205,34 @@ class Sequence(om.Sequence):
             )
 
     @staticmethod
-    def __kmer_yielding(i, seq, prefix, k, t, offset, strand, rc) -> Iterator["KMer"]:
+    def __kmer_yielding(
+        i: int,
+        seq: str,
+        prefix: str,
+        k: int,
+        t: om.NATYPES,
+        offset: int,
+        strand: SequenceCoords.STRAND,
+    ) -> Iterator["KMer"]:
+        """Yield a k-mer.
+
+        :param i: k-mer start position
+        :type i: int
+        :param seq: parent sequence
+        :type seq: str
+        :param prefix: reference record name
+        :type prefix: str
+        :param k: k-mer length
+        :type k: int
+        :param t: nucleic acid type
+        :type t: om.NATYPES
+        :param offset: offset of start position within reference record
+        :type offset: int
+        :param strand: strandedness
+        :type strand: SequenceCoords.STRAND
+        :yield: k-mer generator
+        :rtype: KMer
+        """
         yield KMer(
             prefix,
             i + offset,
@@ -217,16 +244,34 @@ class Sequence(om.Sequence):
 
     @staticmethod
     def __kmer_yielding_with_rc(
-        i, seq, prefix, k, t, offset, strand, rc
+        i: int,
+        seq: str,
+        prefix: str,
+        k: int,
+        t: om.NATYPES,
+        offset: int,
+        strand: SequenceCoords.STRAND,
     ) -> Iterator["KMer"]:
-        yield KMer(
-            prefix,
-            i + offset,
-            i + offset + k,
-            seq[i : i + k],
-            t,
-            strand=strand,
-        )
+        """Yield a k-mer and its reverse complement.
+
+        :param i: k-mer start position
+        :type i: int
+        :param seq: parent sequence
+        :type seq: str
+        :param prefix: reference record name
+        :type prefix: str
+        :param k: k-mer length
+        :type k: int
+        :param t: nucleic acid type
+        :type t: om.NATYPES
+        :param offset: offset of start position within reference record
+        :type offset: int
+        :param strand: strandedness
+        :type strand: SequenceCoords.STRAND
+        :yield: k-mer generator
+        :rtype: KMer
+        """
+        yield from Sequence.__kmer_yielding(i, seq, prefix, k, t, offset, strand)
         yield KMer(
             prefix,
             i + offset,
@@ -280,7 +325,7 @@ class Sequence(om.Sequence):
                     )
                 )
                 continue
-            yield from kmer_yielder(i, seq, prefix, k, t, offset, strand, rc)
+            yield from kmer_yielder(i, seq, prefix, k, t, offset, strand)
 
     @staticmethod
     def kmerator(
@@ -378,13 +423,29 @@ class KMer(Sequence):
 
     def __init__(
         self,
-        chrom,
-        start,
-        end,
-        seq,
-        t=om.NATYPES.DNA,
-        strand=SequenceCoords.STRAND.PLUS,
+        chrom: str,
+        start: int,
+        end: int,
+        seq: str,
+        t: om.NATYPES = om.NATYPES.DNA,
+        strand: SequenceCoords.STRAND = SequenceCoords.STRAND.PLUS,
     ):
+        """Initialize KMer instance.
+
+        :param chrom: reference record name
+        :type chrom: str
+        :param start: k-mer start position
+        :type start: int
+        :param end: k-mer end position
+        :type end: int
+        :param seq: k-mer sequence
+        :type seq: str
+        :param t: nucleic acid type, defaults to om.NATYPES.DNA
+        :type t: om.NATYPES
+        :param strand: strandedness, defaults to SequenceCoords.STRAND.PLUS
+        :type strand: SequenceCoords.STRAND
+        :raises AssertionError: if length and start/end do not match
+        """
         if len(seq) != end - start:
             raise AssertionError
         super().__init__(seq, t)
@@ -423,9 +484,7 @@ class KMer(Sequence):
             coords.ref, coords.start, coords.end, record[1], t, strand=coords.strand
         )
 
-    @staticmethod
-    def from_file(*args, **kwargs):
-        return KMer.from_fasta(*args, **kwargs)
+    from_file = from_fasta
 
     def as_fasta(self) -> str:
         """Fasta-like representation.
@@ -492,12 +551,15 @@ class SequenceCount(Sequence):
         seq, headers = line.strip().split("\t")
         return SequenceCount(seq, headers.split(" "), t)
 
-    @staticmethod
-    def from_file(*args, **kwargs):
-        return SequenceCount.from_text(*args, **kwargs)
+    from_file = from_text
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s\t%s" % (self.seq, " ".join(self.header))
 
-    def as_text(self):
+    def as_text(self) -> str:
+        """Returns a text representation of the current instance.
+
+        :return: current instance as string
+        :rtype: str
+        """
         return str(self) + "\n"

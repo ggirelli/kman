@@ -86,7 +86,7 @@ class Crawler:
             generators = [
                 ((str(r.header), str(r.seq)) for r in b.record_gen(self.doSmart))
                 for b in batches
-                if not type(None) is type(b)
+                if type(None) is not type(b)
             ]
 
         yield from merge(*generators, key=lambda x: x[1])
@@ -348,9 +348,8 @@ class KJoiner:
             kwargs["vector"] = AbundanceVector()
         elif self.memory == self.MEMORY.LOCAL:
             kwargs["vector"] = AbundanceVectorLocal()
-        else:
-            if self.memory not in [self.MEMORY.NORMAL, self.MEMORY.LOCAL]:
-                raise AssertionError
+        elif self.memory not in [self.MEMORY.NORMAL, self.MEMORY.LOCAL]:
+            raise AssertionError
         return kwargs
 
     def _post_join(self, **kwargs) -> None:
@@ -605,7 +604,17 @@ class SeqCountBatcher(BatcherThreading):
             fjoin(headers, seq, **kwargs)
 
     @staticmethod
-    def from_parent(parent, n_batches):
+    def from_parent(parent: KJoinerThreading, n_batches: int) -> "SeqCountBatcher":
+        """Instantiate class from parent.
+
+        :param parent: parent joiner
+        :type parent: KJoinerThreading
+        :param n_batches: number of batches
+        :type n_batches: int
+        :raises AssertionError: if parent type is incompatible
+        :return: new instance
+        :rtype: SeqCountBatcher
+        """
         if type(parent) is not KJoinerThreading:
             raise AssertionError
         return SeqCountBatcher(n_batches, parent.threads, tmp=parent.tmp)

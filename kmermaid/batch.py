@@ -167,7 +167,16 @@ class Batch:
             )
         return sorted(self.record_gen(smart))
 
-    def _record_gen_from_handle(self, TH: IO, smart=False):
+    def _record_gen_from_handle(self, TH: IO, smart: bool = False) -> Iterator[Any]:
+        """Generator of records, read from a file handle.
+
+        :param TH: file handle
+        :type TH: IO
+        :param smart: use smarter IO, defaults to False
+        :type smart: bool
+        :yield: record iterator
+        :rtype: Iterator[Any]
+        """
         if self.isFasta:
             fasta_parser = SmartFastaParser.parse_file if smart else SimpleFastaParser
             for record in fasta_parser(TH):
