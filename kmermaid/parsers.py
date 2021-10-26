@@ -51,7 +51,11 @@ class SmartFastaParser:
         self.__FH.seek(self.__pos)
 
     def __skip_blank_and_comments(self) -> Tuple[str, bool]:
-        # Skip any text before the first record (e.g. blank lines, comments)
+        """Skip any text before the first record (e.g. blank lines, comments)
+
+        :return: next content line, and False if EOF or empty line was reached
+        :rtype: Tuple[str, bool]
+        """
         while True:
             line = self.__FH.readline()
             self.__pos = self.__FH.tell()
@@ -62,6 +66,11 @@ class SmartFastaParser:
         return (line, True)
 
     def __parse_sequence(self) -> List[str]:
+        """Read all sequence for current record.
+
+        :return: sequence lines
+        :rtype: List[str]
+        """
         lines = []
         line = self.__FH.readline()
         while True:
@@ -119,5 +128,12 @@ class SmartFastaParser:
         raise AssertionError("Should not reach this line")
 
     @staticmethod
-    def parse_file(path):
+    def parse_file(path: str) -> Iterator[Tuple[str, str]]:
+        """Parse a FASTA file in a smarter way.
+
+        :param path: path to FASTA file
+        :type path: str
+        :return: FASTA record iterator
+        :rtype: Iterator[Tuple[str, str]]
+        """
         return SmartFastaParser(path).parse()
