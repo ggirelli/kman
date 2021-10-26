@@ -344,7 +344,7 @@ class FastaBatcher(BatcherThreading):
         :param tmp: temporary folder, defaults to tempfile.gettempdir()
         :type tmp: str
         """
-        super().__init__(threads, size, natype, tmp)
+        super().__init__(size, threads, natype, tmp)
         self.mode = scan_mode
         self.doReverseComplement = reverse
 
@@ -428,7 +428,7 @@ class FastaBatcher(BatcherThreading):
             :type k: int
             :return: List[Batch]
             """
-            batcher = FastaRecordBatcher(1, size, natype, tmp)
+            batcher = FastaRecordBatcher(size, 1, natype, tmp)
             batcher.do(record, k, False)
             return batcher.collection
 
@@ -456,7 +456,7 @@ class FastaBatcher(BatcherThreading):
         fasta: str,
         k: int,
         feedMode: BatcherThreading.FEED_MODE = BatcherThreading.FEED_MODE.APPEND,
-    ):
+    ) -> "FastaBatcher":
         """Start batching a fasta file.
 
         Batch a fasta file up to the specified number of k-mers.
@@ -467,6 +467,8 @@ class FastaBatcher(BatcherThreading):
         :type k: int
         :param feedMode: feeding mode, defaults to BatcherThreading.FEED_MODE.APPEND
         :type feedMode: BatcherThreading.FEED_MODE, optional
+        :return: current batcher instance
+        :rtype: FastaBatcher
         :raises AssertionError: if input is not a file
         :raises AssertionError: if k is lower than or equal to 1
         """
@@ -482,6 +484,7 @@ class FastaBatcher(BatcherThreading):
             self.__do_over_records(FH, k, feedMode)
 
         FH.close()
+        return self
 
 
 class FastaRecordBatcher(BatcherThreading):
@@ -517,7 +520,7 @@ class FastaRecordBatcher(BatcherThreading):
         :param tmp: temporary folder, defaults to None
         :type tmp: str
         """
-        super().__init__(threads, size, natype, tmp)
+        super().__init__(size=size, threads=threads, natype=natype, tmp=tmp)
 
     @property
     def doReverseComplement(self):
@@ -529,7 +532,9 @@ class FastaRecordBatcher(BatcherThreading):
             raise AssertionError
         self._doReverseComplement = rc
 
-    def do(self, record: Tuple[str, str], k: int, verbose: bool = True):
+    def do(
+        self, record: Tuple[str, str], k: int, verbose: bool = True
+    ) -> "FastaRecordBatcher":
         """Start batching a fasta record.
 
         Requires a fasta record with header and sequence.
@@ -540,6 +545,8 @@ class FastaRecordBatcher(BatcherThreading):
         :type k: int
         :param verbose: be verbose, defaults to True
         :type verbose: bool
+        :return: current batcher instance
+        :rtype: FastaRecordBatcher
         """
         record_name = record[0].split(" ")[0]
         if verbose:
@@ -559,6 +566,7 @@ class FastaRecordBatcher(BatcherThreading):
             )
             self.feed_collection(batches, self.FEED_MODE.APPEND)
         self.write_all()
+        return self
 
     @staticmethod
     def build_batch(
@@ -599,7 +607,7 @@ class FastaRecordBatcher(BatcherThreading):
         :rtype: FastaRecordBatcher
         """
         batcher = FastaRecordBatcher(
-            parent.threads, parent.size, parent.natype, parent.tmp
+            parent.size, parent.threads, parent.natype, parent.tmp
         )
         batcher._doReverseComplement = parent.doReverseComplement
         return batcher

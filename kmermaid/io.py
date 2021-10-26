@@ -24,10 +24,11 @@ def set_tempdir(path: str, create: bool = True) -> None:
     :type create: bool
     :raises AssertionError: if not found and create is False
     """
-    if not os.path.isdir(path) and create:
-        os.makedirs(path, exist_ok=True)
-    else:
-        raise AssertionError(f"folder not found: {path}")
+    if not os.path.isdir(path):
+        if create:
+            os.makedirs(path, exist_ok=True)
+        else:
+            raise AssertionError(f"folder not found: {path}")
     tempfile.tempdir = path
 
 

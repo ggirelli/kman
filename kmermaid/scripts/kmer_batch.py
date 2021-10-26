@@ -103,7 +103,7 @@ def prepare_run(input_path: str, output_path: str, tmp: str) -> None:
     :raises AssertionError: if output folder exists or is not empty.
     """
     input_file_exists(input_path)
-    if os.path.isdir(output_path) and len(os.listdir(output_path)) == 0:
+    if os.path.isdir(output_path) and len(os.listdir(output_path)) != 0:
         raise AssertionError("output folder must be empty or non-existent.")
     set_tempdir(tmp)
     os.makedirs(output_path, exist_ok=True)
