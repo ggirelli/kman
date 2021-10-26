@@ -100,17 +100,23 @@ class Crawler:
         :type batches: List[Type[Batch]]
         :yield: (header, sequence)
         :rtype: Tuple[List[str], str]
+        :raises StopIteration: if the batches are empty
         """
         crawler = self.do_records(batches)
 
-        first_record = next(crawler)
+        try:
+            first_record = next(crawler)
+        except StopIteration:
+            raise StopIteration("nothing to crawl through")
+
         current_seq = first_record[1]
         current_headers = [first_record[0]]
 
-        if self.verbose:
-            crawler = tqdm(
-                crawler, initial=1, desc=self.desc, total=self.count_records(batches)
-            )
+        crawler = (
+            tqdm(crawler, initial=1, desc=self.desc, total=self.count_records(batches))
+            if self.verbose
+            else crawler
+        )
 
         for record in crawler:
             if current_seq == record[1]:
