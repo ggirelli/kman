@@ -562,5 +562,5 @@ class BatchAppendable(Batch):
         self._i = 0
         self._remaining = self.size
 
-    def unwrite(self, *args, **kwargs):
+    def unwrite(self):
         """Do nothing for Appendable batches."""
