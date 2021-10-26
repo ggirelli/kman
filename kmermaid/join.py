@@ -89,7 +89,6 @@ class Crawler:
                 if type(None) is not type(b)
             ]
 
-
         yield from merge(*generators, key=lambda x: x[1])
 
     def do_batch(self, batches: List[Batch]) -> Iterator[Tuple[List[str], str]]:
