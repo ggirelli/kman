@@ -86,8 +86,9 @@ class Crawler:
             generators = [
                 ((str(r.header), str(r.seq)) for r in b.record_gen(self.doSmart))
                 for b in batches
-                if not type(None) is type(b)
+                if type(None) is not type(b)
             ]
+
 
         yield from merge(*generators, key=lambda x: x[1])
 
@@ -348,9 +349,8 @@ class KJoiner:
             kwargs["vector"] = AbundanceVector()
         elif self.memory == self.MEMORY.LOCAL:
             kwargs["vector"] = AbundanceVectorLocal()
-        else:
-            if self.memory not in [self.MEMORY.NORMAL, self.MEMORY.LOCAL]:
-                raise AssertionError
+        elif self.memory not in [self.MEMORY.NORMAL, self.MEMORY.LOCAL]:
+            raise AssertionError
         return kwargs
 
     def _post_join(self, **kwargs) -> None:
