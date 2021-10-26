@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kmermaid"
-version = "1.0.0b0"
+version = "1.0.0"
 description = "K-mer management tools"
 authors = ["Gabriele Girelli <gigi.ga90@gmail.com>"]
 license = "MIT"
@@ -9,7 +9,7 @@ homepage = "https://github.com/ggirelli/kmermaid"
 repository = "https://github.com/ggirelli/kmermaid"
 keywords = ["biology", "DNA", "RNA", "kmer", "oligomer", "uniq", "unique", "count", "sequence"]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
