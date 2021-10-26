@@ -16,6 +16,14 @@ from kmermaid.batch import Batch
 
 
 def set_tempdir(path: str, create: bool = True) -> None:
+    """Set new temporary directory and creates it if needed.
+
+    :param path: path to new temporary directory
+    :type path: str
+    :param create: create if not found, defaults to True
+    :type create: bool
+    :raises AssertionError: if not found and create is False
+    """
     if not os.path.isdir(path) and create:
         os.makedirs(path, exist_ok=True)
     else:
@@ -24,6 +32,12 @@ def set_tempdir(path: str, create: bool = True) -> None:
 
 
 def input_file_exists(path: str) -> None:
+    """Check if a file exists.
+
+    :param path: to input file
+    :type path: str
+    :raises AssertionError: if file not found
+    """
     if not os.path.isfile(path):
         raise AssertionError(f"input file not found: {path}")
 
