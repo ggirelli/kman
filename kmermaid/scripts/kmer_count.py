@@ -4,6 +4,7 @@
 """
 
 import logging
+import pathlib
 import resource
 import tempfile
 from typing import Optional
@@ -107,7 +108,7 @@ def run(
                 size=batch_size,
                 threads=threads,
             )
-            .do(input_path, k, BatcherThreading.FEED_MODE[batch_mode])
+            .do(pathlib.Path(input_path), k, BatcherThreading.FEED_MODE[batch_mode])
             .collection
         )
 

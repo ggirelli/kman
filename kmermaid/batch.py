@@ -6,6 +6,7 @@
 
 import gzip
 import os
+import pathlib
 import tempfile
 import time
 from typing import IO, Any, Iterator, List, Type
@@ -297,7 +298,7 @@ class Batch:
 
     @staticmethod
     def from_file(
-        path: str,
+        path: pathlib.Path,
         t: Type = KMer,
         isFasta: bool = True,
         smart: bool = False,
@@ -308,7 +309,7 @@ class Batch:
         Used to link an existing file to a Batch instance.
 
         :param path: path to previously generated batch.
-        :type path: str
+        :type path: pathlib.Path
         :param t: record type, defaults to KMer
         :type t: Type
         :param isFasta: if the input is FASTA, defaults to True
@@ -321,17 +322,16 @@ class Batch:
         :rtype: Batch
         """
         if isFasta:
-            FH = gzip.open(path, "rt") if path.endswith(".gz") else open(path, "r+")
             if smart:
-                size = max(2, sum(1 for record in SmartFastaParser(FH).parse()))
+                size = max(2, sum(1 for _ in SmartFastaParser(path).parse()))
             else:
-                size = max(2, sum(1 for record in SimpleFastaParser(FH)))
+                size = max(2, sum(1 for _ in SimpleFastaParser(path)))
         else:
-            FH = open(path, "r+")
-            size = max(2, sum(1 for line in FH))
+            with path.open("r+") as FH:
+                size = max(2, sum(1 for _ in FH))
 
         batch = Batch(t, os.path.dirname(path), size)
-        batch._tmp = FH.name
+        batch._tmp = path.name
         batch._i = size
         batch._remaining = 0
         batch._written = True
@@ -340,7 +340,6 @@ class Batch:
         if reSort:
             batch.write(doSort=True, force=True)
 
-        FH.close()
         return batch
 
     @staticmethod
@@ -491,7 +490,7 @@ class BatchAppendable(Batch):
 
     @staticmethod
     def from_file(
-        path: str,
+        path: pathlib.Path,
         t: Type = KMer,
         isFasta: bool = True,
         smart: bool = False,
@@ -502,7 +501,7 @@ class BatchAppendable(Batch):
         Used to link an existing file to a Batch instance.
 
         :param path: path to previously generated batch
-        :type path: str
+        :type path: pathlib.Path
         :param t: record type, defaults to KMer
         :type t: Type
         :param isFasta: is input FASYA, defaults to True
@@ -515,22 +514,20 @@ class BatchAppendable(Batch):
         :rtype: Batch
         """
         if isFasta:
-            FH = gzip.open(path, "rt") if path.endswith(".gz") else open(path, "r+")
             if smart:
-                size = max(2, sum(1 for record in SmartFastaParser(FH).parse()))
+                size = max(2, sum(1 for _ in SmartFastaParser(path).parse()))
             else:
-                size = max(2, sum(1 for record in SimpleFastaParser(FH)))
+                size = max(2, sum(1 for _ in SimpleFastaParser(path)))
         else:
-            FH = open(path, "r+")
-            size = max(2, sum(1 for line in FH))
+            with path.open("r+") as FH:
+                size = max(2, sum(1 for _ in FH))
 
         batch = BatchAppendable(t, os.path.dirname(path), size)
-        batch._tmp = FH.name
+        batch._tmp = path.name
         batch._i = size
         batch._remaining = 0
         batch._written = True
 
-        FH.close()
         return batch
 
     @staticmethod

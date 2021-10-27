@@ -5,6 +5,7 @@
 
 import logging
 import os
+import pathlib
 import tempfile
 
 import click  # type: ignore
@@ -80,7 +81,7 @@ def run(
                 size=batch_size,
                 threads=threads,
             )
-            .do(input_path, k, BatcherThreading.FEED_MODE[batch_mode])
+            .do(pathlib.Path(input_path), k, BatcherThreading.FEED_MODE[batch_mode])
             .collection,
             output_path,
             compress,
