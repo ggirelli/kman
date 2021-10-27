@@ -4,6 +4,8 @@
 @description: batch systems
 """
 
+from __future__ import annotations
+
 import copy
 import os
 import pathlib
@@ -36,7 +38,7 @@ class Batchable(Sortable):
 
     @staticmethod
     @abstractmethod
-    def from_raw(raw: Any, /, **kwargs) -> "Batchable":
+    def from_raw(raw: Any, /, **kwargs) -> Batchable:
         """Raw form to Batchable object conversion.
 
         :param raw: to be converted to Batchable object

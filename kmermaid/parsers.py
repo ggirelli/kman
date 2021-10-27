@@ -4,6 +4,8 @@
 @description: methods for sequence manipulation
 """
 
+from __future__ import annotations
+
 import gzip
 import pathlib
 from abc import abstractmethod
@@ -33,7 +35,7 @@ class ParserBase:
         raise NotImplementedError
 
     @abstractmethod
-    def parse(self) -> Iterator["_OUTPUT_TYPE"]:
+    def parse(self) -> Iterator[_OUTPUT_TYPE]:
         """Parse a file.
 
         :raises NotImplementedError: abstract method
@@ -42,7 +44,7 @@ class ParserBase:
 
     @staticmethod
     @abstractmethod
-    def parse_file(path: pathlib.Path) -> Iterator["_OUTPUT_TYPE"]:
+    def parse_file(path: pathlib.Path) -> Iterator[_OUTPUT_TYPE]:
         """Parse a file (static method).
 
         :param path: path to file
@@ -75,7 +77,7 @@ class FastaParserBase(ParserBase):
         raise NotImplementedError
 
     @abstractmethod
-    def parse(self) -> Iterator["_OUTPUT_TYPE"]:
+    def parse(self) -> Iterator[_OUTPUT_TYPE]:
         """Parse a FASTA file.
 
         :raises NotImplementedError: abstract method
@@ -84,7 +86,7 @@ class FastaParserBase(ParserBase):
 
     @staticmethod
     @abstractmethod
-    def parse_file(path: pathlib.Path) -> Iterator["_OUTPUT_TYPE"]:
+    def parse_file(path: pathlib.Path) -> Iterator[_OUTPUT_TYPE]:
         """Parse a FASTA file (static method).
 
         :param path: path to FASTA file

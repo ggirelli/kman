@@ -3,6 +3,7 @@
 @contact: gigi.ga90@gmail.com
 @description: sequence management systems
 """
+from __future__ import annotations
 
 import inspect
 import logging
@@ -152,7 +153,7 @@ class Sequence(om.Sequence):
             raise AssertionError("sequence type must be from om.NATYPES")
         super().__init__(seq, t, name)
 
-    def kmers(self, k: int) -> Iterator["Sequence"]:
+    def kmers(self, k: int) -> Iterator[Sequence]:
         """Extract k-mers from Sequence.
 
         :param k: k-mer length.
@@ -181,9 +182,7 @@ class Sequence(om.Sequence):
         """
         return self.batcher(self.text, k, batchSize)
 
-    def kmers_batched(
-        self, k: int, batchSize: int = 1
-    ) -> Iterator[Iterator["Sequence"]]:
+    def kmers_batched(self, k: int, batchSize: int = 1) -> Iterator[Iterator[Sequence]]:
         """Extract batches of k-mers from Sequence.
 
         :param k: k-mer length
@@ -217,7 +216,7 @@ class Sequence(om.Sequence):
         t: om.NATYPES,
         offset: int,
         strand: SequenceCoords.STRAND,
-    ) -> Iterator["KMer"]:
+    ) -> Iterator[KMer]:
         """Yield a k-mer.
 
         :param i: k-mer start position
@@ -255,7 +254,7 @@ class Sequence(om.Sequence):
         t: om.NATYPES,
         offset: int,
         strand: SequenceCoords.STRAND,
-    ) -> Iterator["KMer"]:
+    ) -> Iterator[KMer]:
         """Yield a k-mer and its reverse complement.
 
         :param i: k-mer start position
@@ -294,7 +293,7 @@ class Sequence(om.Sequence):
         offset: int,
         strand: SequenceCoords.STRAND,
         rc: bool,
-    ) -> Iterator["KMer"]:
+    ) -> Iterator[KMer]:
         """Extract k-mers from sequence.
 
         :param seq: sequence
@@ -340,7 +339,7 @@ class Sequence(om.Sequence):
         offset: "int" = 0,
         strand: SequenceCoords.STRAND = SequenceCoords.STRAND.PLUS,
         rc=False,
-    ) -> Iterator["KMer"]:
+    ) -> Iterator[KMer]:
         """Extract k-mers from sequence.
 
         :param seq: sequence
@@ -389,7 +388,7 @@ class Sequence(om.Sequence):
     @staticmethod
     def kmerator_batched(
         seq: str, k: int, t: om.NATYPES, batchSize: int = 1, prefix="ref", rc=False
-    ) -> Iterator[Iterator["Sequence"]]:
+    ) -> Iterator[Iterator[Sequence]]:
         """Extract batches of k-mers from sequence.
 
         :param seq: sequence
@@ -473,7 +472,7 @@ class KMer(Sequence, Batchable):
         return super().__eq__(other)
 
     @staticmethod
-    def from_raw(raw: FASTA_SIMPLE_RECORD, /, **kwargs) -> "KMer":
+    def from_raw(raw: FASTA_SIMPLE_RECORD, /, **kwargs) -> KMer:
         """Reads a KMer from a Fasta record.
 
         :param raw: (header, sequence)
@@ -520,7 +519,7 @@ class KMer(Sequence, Batchable):
         parser_annotation = inspect.signature(parser.parse).return_annotation
         return parser_annotation == Iterator[FASTA_SIMPLE_RECORD]
 
-    def __lt__(self, other: "KMer") -> bool:
+    def __lt__(self, other: KMer) -> bool:
         """Check if current instance is lower than another instance.
 
         :param other: other instance
@@ -574,7 +573,7 @@ class SequenceCount(Sequence, Batchable):
         return self.text
 
     @staticmethod
-    def from_raw(raw: str, /, **kwargs) -> "KMer":
+    def from_raw(raw: str, /, **kwargs) -> SequenceCount:
         """Reads a KMer from a Fasta record.
 
         :param raw: line
