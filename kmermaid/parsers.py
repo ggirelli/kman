@@ -21,7 +21,6 @@ class ParserBase:
 
     _FH: IO
     _OUTPUT_TYPE = Union[Any]
-    OUTPUT_TYPE = Any
 
     @abstractmethod
     def __init__(self, path: pathlib.Path):
@@ -63,7 +62,6 @@ class FastaParserBase(ParserBase):
     """
 
     _OUTPUT_TYPE = Union[FASTA_SIMPLE_RECORD]
-    OUTPUT_TYPE = _OUTPUT_TYPE
     _FH: IO
 
     @abstractmethod
