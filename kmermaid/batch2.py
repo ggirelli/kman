@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import copy
 import os
 import pathlib
 import tempfile
@@ -93,11 +92,11 @@ class Batch:
     :param _written: if the batch was written to disk, defaults to False
     :type _written: bool
     :param parser: for file parsing
-    :type parser: ParserBase
+    :type parser: Type[ParserBase]
     """
 
     _record_type: Type[Batchable]
-    _collection: List[Batchable] = []
+    _collection: List[Optional[Batchable]] = []
 
     _current_size: int = 0
     _size: int
@@ -111,12 +110,12 @@ class Batch:
     )
     _written: bool = False
 
-    _parser: ParserBase
+    _parser: Type[ParserBase]
 
     def __init__(
         self,
         record_type: Type[Batchable],
-        parser: ParserBase,
+        parser: Type[ParserBase],
         size: int = 1,
     ):
         """Initialize Batch
@@ -124,7 +123,7 @@ class Batch:
         :param record_type: record type
         :type record_type: Type[Batchable]
         :param parser: for file parsing
-        :type parser: ParserBase
+        :type parser: Type[ParserBase]
         :param size: records per batch, defaults to 1
         :type size: int
         :raises AssertionError: if size is lower than 1
@@ -135,13 +134,14 @@ class Batch:
         self._record_type = record_type
         self._parser = parser
         self._size = size
+        self._collection = [None] * size
 
     @property
     def record_type(self):
         return self._record_type
 
     @property
-    def collection(self) -> List[Batchable]:
+    def collection(self) -> List[Optional[Batchable]]:
         return self._collection.copy()
 
     @property
@@ -161,8 +161,8 @@ class Batch:
         return self._temp
 
     @property
-    def parser(self) -> ParserBase:
-        return copy.copy(self._parser)
+    def parser(self) -> Type[ParserBase]:
+        return self._parser
 
     def is_written(self) -> bool:
         """Whether the batch was written to disk.
@@ -305,17 +305,17 @@ class Batch:
                         ]
                     )
                 )
-            self._collection = []
+            self._collection = [None] * self.size
             self._written = True
 
     @staticmethod
     def from_file(
         path: pathlib.Path,
         record_type: Type[Batchable],
-        parser: ParserBase,
+        parser: Type[ParserBase],
         do_sort: bool = False,
         sort_by: Optional[str] = None,
-    ) -> "Batch":
+    ) -> Batch:
         """Generate a batch from a file.
 
         Used to link an existing file to a Batch instance.
@@ -325,7 +325,7 @@ class Batch:
         :param record_type: record type
         :type record_type: Type[Batchable]
         :param parser: for file parsing
-        :type parser: ParserBase
+        :type parser: Type[ParserBase]
         :param do_sort: sort records
         :type do_sort: bool
         :param sort_by: key for sorting
@@ -350,7 +350,7 @@ class Batch:
         Empties current records collection and any written file.
         """
         if self.is_written():
-            os.remove(self.tmp)
+            os.remove(self.temp)
         self._written = False
         self._current_size = 0
         self._collection = [None] * self._size
@@ -364,7 +364,7 @@ class Batch:
             self._collection = [None] * self.size
             self._collection[: self.current_size] = list(self.record_gen())
             self._written = False
-            os.remove(self.tmp)
+            os.remove(self.temp)
 
 
 class BatchAppendable(Batch):
@@ -376,10 +376,28 @@ class BatchAppendable(Batch):
     """
 
     _record_type: Type[Batchable]
-    _parser: ParserBase
+    _parser: Type[ParserBase]
 
-    _collection: List[Batchable] = []
+    _collection: List[Optional[Batchable]] = []
     _written: bool = True
+
+    def __init__(
+        self,
+        record_type: Type[Batchable],
+        parser: Type[ParserBase],
+        size: int = 1,
+    ):
+        """Initialize Batch
+
+        :param record_type: record type
+        :type record_type: Type[Optional[Batchable]]
+        :param parser: for file parsing
+        :type parser: Type[ParserBase]
+        :param size: records per batch, defaults to 1
+        :type size: int
+        """
+        super().__init__(record_type, parser, size)
+        self.temp.touch()
 
     def info(self) -> str:
         """Prints Batch information in a readable format.
@@ -409,7 +427,7 @@ class BatchAppendable(Batch):
             for record in self._parser.parse_file(self.temp)
         )
         if do_sort:
-            if sort_by is None:
+            if sort_by is not None:
                 if sort_by not in dir(self._record_type):
                     raise KeyError(
                         f"attribute '{sort_by}' not found in {self._record_type}"
@@ -468,7 +486,7 @@ class BatchAppendable(Batch):
     def from_file(
         path: pathlib.Path,
         record_type: Type[Batchable],
-        parser: ParserBase,
+        parser: Type[ParserBase],
         do_sort: bool = False,
         sort_by: Optional[str] = None,
     ) -> "Batch":
@@ -481,7 +499,7 @@ class BatchAppendable(Batch):
         :param record_type: record type
         :type record_type: Type[Batchable]
         :param parser: for file parsing
-        :type parser: ParserBase
+        :type parser: Type[ParserBase]
         :param do_sort: sort records
         :type do_sort: bool
         :param sort_by: key for sorting
