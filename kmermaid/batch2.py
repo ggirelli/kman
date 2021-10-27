@@ -247,7 +247,7 @@ class Batch:
         """
         if self.is_full():
             raise AssertionError("this batch is full.")
-        if self.is_written:
+        if self.is_written():
             raise AssertionError("this batch has been stored locally.")
         self.check_record(record)
         self._collection[self._current_size] = record
