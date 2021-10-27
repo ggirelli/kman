@@ -21,8 +21,8 @@ def test_Batch():
     assert b.current_size == 0
     assert b.is_written is False
     assert str == b.type
-    assert len(list(b.record_gen())) == 0
-    assert len(list(b.sorted())) == 0
+    assert not list(b.record_gen())
+    assert not list(b.sorted())
     assert isinstance(b.check_record("test"), type(None))
 
     try:
@@ -108,8 +108,8 @@ def test_BatchAppendable():
     assert b.current_size == 0
     assert b.is_written is True
     assert str == b.type
-    assert len(list(b.record_gen())) == 0
-    assert len(list(b.sorted())) == 0
+    assert not list(b.record_gen())
+    assert not list(b.sorted())
 
     continue_test_BatchAppendable_2(b)
 
