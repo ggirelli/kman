@@ -7,18 +7,61 @@
 import gzip
 import pathlib
 from abc import abstractmethod
-from typing import IO, Iterator, List, Tuple
+from typing import IO, Any, Iterator, List, Tuple, Union
 
 FASTA_SIMPLE_RECORD = Tuple[str, str]
 
 
-class FastaParserBase:
+class ParserBase:
+    """Interface for file parser classes.
+
+    :param _FH: buffer handle for input file
+    :type _FH: IO
+    """
+
+    _FH: IO
+    _OUTPUT_TYPE = Union[Any]
+
+    @abstractmethod
+    def __init__(self, path: pathlib.Path):
+        """Initialize parser.
+
+        :param path: path to file
+        :type path: pathlib.Path
+        :raises NotImplementedError: abstract method
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def parse(self) -> Iterator[_OUTPUT_TYPE]:
+        """Parse a file.
+
+        :raises NotImplementedError: abstract method
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    @abstractmethod
+    def parse_file(path: pathlib.Path) -> Iterator[_OUTPUT_TYPE]:
+        """Parse a file (static method).
+
+        :param path: path to file
+        :type path: pathlib.Path
+        :yield: record iterator
+        :rtype: Iterator[Any]
+        :raises NotImplementedError: abstract method
+        """
+        raise NotImplementedError
+
+
+class FastaParserBase(ParserBase):
     """Interface for FASTA file parser classes.
 
     :param _FH: buffer handle for input FASTA file
     :type _FH: IO
     """
 
+    _OUTPUT_TYPE = Union[FASTA_SIMPLE_RECORD]
     _FH: IO
 
     @abstractmethod
@@ -32,7 +75,7 @@ class FastaParserBase:
         raise NotImplementedError
 
     @abstractmethod
-    def parse(self) -> Iterator[FASTA_SIMPLE_RECORD]:
+    def parse(self) -> Iterator[_OUTPUT_TYPE]:
         """Parse a FASTA file.
 
         :raises NotImplementedError: abstract method
@@ -41,7 +84,7 @@ class FastaParserBase:
 
     @staticmethod
     @abstractmethod
-    def parse_file(path: pathlib.Path) -> Iterator[FASTA_SIMPLE_RECORD]:
+    def parse_file(path: pathlib.Path) -> Iterator[_OUTPUT_TYPE]:
         """Parse a FASTA file (static method).
 
         :param path: path to FASTA file
@@ -156,7 +199,7 @@ class SmartFastaParser(FastaParserBase):
             lines.append(line.rstrip())
         return "".join(lines)
 
-    def parse(self) -> Iterator[FASTA_SIMPLE_RECORD]:
+    def parse(self) -> Iterator[FastaParserBase._OUTPUT_TYPE]:
         """Iterate over FASTA records as string tuples.
 
         For each record, a tuple of two strings is returned: the FASTA header (without
@@ -196,7 +239,7 @@ class SmartFastaParser(FastaParserBase):
             yield header, sequence
 
     @staticmethod
-    def parse_file(path: pathlib.Path) -> Iterator[FASTA_SIMPLE_RECORD]:
+    def parse_file(path: pathlib.Path) -> Iterator[FastaParserBase._OUTPUT_TYPE]:
         """Parse a FASTA file in a smarter way.
 
         :param path: path to FASTA file
