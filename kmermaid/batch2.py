@@ -378,7 +378,6 @@ class BatchAppendable(Batch):
     _collection: List[Batchable] = []
     _written: bool = True
 
-    @property
     def info(self) -> str:
         """Prints Batch information in a readable format.
 
