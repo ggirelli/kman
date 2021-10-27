@@ -103,8 +103,7 @@ class SmartFastaParser(FastaParserBase):
         """
         if self.__compressed:
             return self._FH.readline().decode()
-        else:
-            return self._FH.readline()
+        return self._FH.readline()
 
     def __seek_last_position(self) -> bool:
         """Move buffer to last recorded position.
