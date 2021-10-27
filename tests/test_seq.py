@@ -108,7 +108,7 @@ def test_KMer():
     assert seq == k.seq
 
     assert k == KMer.from_fasta((k.header, k.seq))
-    assert ">%s\n%s\n" % (k.header, k.seq) == k.as_fasta()
+    assert ">%s\n%s\n" % (k.header, k.seq) == KMer.as_fasta(k)
     assert "%s\t%s" % (k.header, k.seq) == str(k)
 
     assert k.is_ab_checked()
@@ -198,4 +198,4 @@ def test_SequenceCount():
     strRepr = "%s\t%s" % (sco.seq, " ".join(sco.header))
     assert str(sco) == strRepr
     assert sco == sco.from_text(strRepr)
-    assert str(sco) + "\n" == sco.as_text()
+    assert str(sco) + "\n" == SequenceCount.as_text(sco)

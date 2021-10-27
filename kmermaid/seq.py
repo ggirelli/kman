@@ -486,16 +486,19 @@ class KMer(Sequence):
 
     from_file = from_fasta
 
-    def as_fasta(self) -> str:
+    @staticmethod
+    def as_fasta(kmer: "KMer") -> str:
         """Fasta-like representation.
 
+        :param kmer: to be converted to FASTA
+        :type kmer: KMer
         :return: fasta format
         :rtype: str
         """
-        return ">%s\n%s\n" % (self.header, self.seq)
+        return f">{kmer.header}\n{kmer.seq}\n"
 
     def __repr__(self):
-        return "%s\t%s" % (self.header, self.seq)
+        return f"{self.header}\t{self.seq}"
 
     def is_ab_checked(self) -> bool:
         """Check if AB is fully respected.
@@ -554,12 +557,15 @@ class SequenceCount(Sequence):
     from_file = from_text
 
     def __repr__(self) -> str:
-        return "%s\t%s" % (self.seq, " ".join(self.header))
+        return f"{self.seq}\t{' '.join(self.header)}"
 
-    def as_text(self) -> str:
+    @staticmethod
+    def as_text(kmer: "KMer") -> str:
         """Returns a text representation of the current instance.
 
+        :param kmer: to be converted to FASTA
+        :type kmer: KMer
         :return: current instance as string
         :rtype: str
         """
-        return str(self) + "\n"
+        return f"{kmer}\n"
