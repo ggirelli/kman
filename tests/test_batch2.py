@@ -133,12 +133,13 @@ def test_BatchAppendable():
     assert b.size - b.current_size == b.remaining
 
     b.add_all(
-        (x for x in [BatchableTest("Second record"), BatchableTest("Third record")])
+        iter([BatchableTest("Second record"), BatchableTest("Third record")])
     )
+
     assert b.current_size == 3
     assert b.size - b.current_size == b.remaining
 
-    b.add_all((x for x in [BatchableTest("4th record")]))
+    b.add_all(iter([BatchableTest("4th record")]))
 
     assert [
         "First record\n",
