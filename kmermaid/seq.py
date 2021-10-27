@@ -473,21 +473,32 @@ class KMer(Sequence, Batchable):
         return super().__eq__(other)
 
     @staticmethod
-    def from_raw(
-        raw: FASTA_SIMPLE_RECORD, /, nat: om.NATYPES = om.NATYPES.DNA
-    ) -> "KMer":
+    def from_raw(raw: FASTA_SIMPLE_RECORD, /, **kwargs) -> "KMer":
         """Reads a KMer from a Fasta record.
 
         :param raw: (header, sequence)
         :type raw: FASTA_SIMPLE_RECORD
-        :param nat: nucleic acid type, defaults to om.NATYPES.DNA
-        :type nat: om.NATYPES
+        :param **kwargs: see below
         :return: k-mer instance
         :rtype: KMer
+
+        :raises AssertionError: if 'nat' kwarg is not om.NATYPES
+
+        :Keyword Arguments:
+            * nat (om.NATYPES) -- nucleic acid type, defaults to om.NATYPES.DNA
         """
+        if "nat" not in kwargs:
+            kwargs["nat"] = om.NATYPES.DNA
+        elif not isinstance(kwargs["nat"], om.NATYPES):
+            raise AssertionError(f"'nat' argument should be of {om.NATYPES} type")
         coords = SequenceCoords.from_str(raw[0])
         return KMer(
-            coords.ref, coords.start, coords.end, raw[1], nat, strand=coords.strand
+            coords.ref,
+            coords.start,
+            coords.end,
+            raw[1],
+            kwargs["nat"],
+            strand=coords.strand,
         )
 
     def to_str(self) -> str:
@@ -563,18 +574,27 @@ class SequenceCount(Sequence, Batchable):
         return self.text
 
     @staticmethod
-    def from_raw(raw: str, /, nat: om.NATYPES = om.NATYPES.DNA) -> "SequenceCount":
-        """Reads a KMer from a FASTA record.
+    def from_raw(raw: str, /, **kwargs) -> "KMer":
+        """Reads a KMer from a Fasta record.
 
-        :param raw: sequence
+        :param raw: line
         :type raw: str
-        :param nat: nucleic acid type, defaults to om.NATYPES.DNA
-        :type nat: om.NATYPES, optional
-        :return: class instance
+        :param **kwargs: see below
+        :return: sequence count instance
         :rtype: SequenceCount
+
+        :raises AssertionError: if 'nat' kwarg is missing
+        :raises AssertionError: if 'nat' kwarg is not om.NATYPES
+
+        :Keyword Arguments:
+            * nat (om.NATYPES) -- nucleic acid type, defaults to om.NATYPES.DNA
         """
+        if "nat" not in kwargs:
+            kwargs["nat"] = om.NATYPES.DNA
+        elif not isinstance(kwargs["nat"], om.NATYPES):
+            raise AssertionError(f"'nat' argument should be of {om.NATYPES} type")
         seq, headers = raw.strip().split("\t")
-        return SequenceCount(seq, headers.split(" "), nat)
+        return SequenceCount(seq, headers.split(" "), kwargs["nat"])
 
     def supports_parser(self, parser: Type[ParserBase]) -> bool:
         """Whether a parser is supported.

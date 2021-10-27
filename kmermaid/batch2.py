@@ -36,11 +36,12 @@ class Batchable(Sortable):
 
     @staticmethod
     @abstractmethod
-    def from_raw(raw: Any, /) -> "Batchable":
+    def from_raw(raw: Any, /, **kwargs) -> "Batchable":
         """Raw form to Batchable object conversion.
 
         :param raw: to be converted to Batchable object
         :type raw: Any
+        :param **kwargs: additional keyword arguments
         :return: a Batchable object
         :rtype: Batchable
         :raises NotImplementedError: abstract method
