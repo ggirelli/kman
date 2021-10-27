@@ -7,7 +7,7 @@ import logging
 import pathlib
 import resource
 import tempfile
-from typing import Optional
+from typing import Callable, Optional
 
 import click  # type: ignore
 
@@ -18,39 +18,55 @@ from kmermaid.join import KJoiner, KJoinerThreading
 from kmermaid.scripts import arguments as args
 
 
-@click.command(
-    name="count",
-    context_settings=CONTEXT_SETTINGS,
-    help="""
-Count occurrences of all k-mers from INPUT.
+def add_click_hooks(f: Callable[..., None]):
+    """Click hook decorator.
 
-\b
-Counting modes:
-       SEQ_COUNT a tabulation-separated table with sequence and count
-       VEC_COUNT a vector for each record in the input fasta, containing the
-                 occurrence count of each k-mer (start position-bound)
-VEC_COUNT_MASKED a vector for each record in the input fasta, containing the
-                 occurrence count of each k-mer (start position-bound). Only
-                 occurrences in other records are counted.
+    :param f: run function
+    :type f: Callable[..., None]
+    :return: decorated f
+    :rtype: Callable[..., None]
+    """
 
-When using a vector (VEC_*) mode, the output will be stored in a folder with the
-name of the specified OUTPUT path, after removing the extension.
-The INPUT file can be gzipped.
-""",
-)
-@args.input_path()
-@args.output_path(file_okay=True)
-@args.k()
-@args.reverse()
-@args.scan_mode()
-@args.batch_size()
-@args.batch_mode()
-@args.previous_batches()
-@args.count_mode()
-@args.memory_mode()
-@args.threads()
-@args.tmp()
-@args.re_sort()
+    @click.command(
+        name="count",
+        context_settings=CONTEXT_SETTINGS,
+        help="""
+    Count occurrences of all k-mers from INPUT.
+
+    \b
+    Counting modes:
+        SEQ_COUNT a tabulation-separated table with sequence and count
+        VEC_COUNT a vector for each record in the input fasta, containing the
+                    occurrence count of each k-mer (start position-bound)
+    VEC_COUNT_MASKED a vector for each record in the input fasta, containing the
+                    occurrence count of each k-mer (start position-bound). Only
+                    occurrences in other records are counted.
+
+    When using a vector (VEC_*) mode, the output will be stored in a folder with the
+    name of the specified OUTPUT path, after removing the extension.
+    The INPUT file can be gzipped.
+    """,
+    )
+    @args.input_path()
+    @args.output_path(file_okay=True)
+    @args.k()
+    @args.reverse()
+    @args.scan_mode()
+    @args.batch_size()
+    @args.batch_mode()
+    @args.previous_batches()
+    @args.count_mode()
+    @args.memory_mode()
+    @args.threads()
+    @args.tmp()
+    @args.re_sort()
+    def wrapper(*args, **kwargs):
+        f(*args, **kwargs)
+
+    return wrapper
+
+
+@add_click_hooks
 def run(
     input_path: str,
     output_path: str,

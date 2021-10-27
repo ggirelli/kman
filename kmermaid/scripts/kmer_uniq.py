@@ -6,7 +6,7 @@
 import logging
 import pathlib
 import tempfile
-from typing import Optional
+from typing import Callable, Optional
 
 import click  # type: ignore
 
@@ -17,22 +17,38 @@ from kmermaid.join import KJoinerThreading
 from kmermaid.scripts import arguments as args
 
 
-@click.command(
-    name="uniq",
-    context_settings=CONTEXT_SETTINGS,
-    help="Extract all k-mers that appear only once in the INPUT fasta file.",
-)
-@args.input_path()
-@args.output_path(file_okay=True)
-@args.k()
-@args.reverse()
-@args.scan_mode()
-@args.batch_size()
-@args.batch_mode()
-@args.previous_batches()
-@args.threads()
-@args.tmp()
-@args.re_sort()
+def add_click_hooks(f: Callable[..., None]):
+    """Click hook decorator.
+
+    :param f: run function
+    :type f: Callable[..., None]
+    :return: decorated f
+    :rtype: Callable[..., None]
+    """
+
+    @click.command(
+        name="uniq",
+        context_settings=CONTEXT_SETTINGS,
+        help="Extract all k-mers that appear only once in the INPUT fasta file.",
+    )
+    @args.input_path()
+    @args.output_path(file_okay=True)
+    @args.k()
+    @args.reverse()
+    @args.scan_mode()
+    @args.batch_size()
+    @args.batch_mode()
+    @args.previous_batches()
+    @args.threads()
+    @args.tmp()
+    @args.re_sort()
+    def wrapper(*args, **kwargs):
+        f(*args, **kwargs)
+
+    return wrapper
+
+
+@add_click_hooks
 def run(
     input_path: str,
     output_path: str,
