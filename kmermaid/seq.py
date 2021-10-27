@@ -4,12 +4,16 @@
 @description: sequence management systems
 """
 
+import inspect
 import logging
 import re
 from enum import Enum, unique
-from typing import Iterator, List, Tuple
+from typing import Iterator, List, Tuple, Type
 
 import oligo_melting as om  # type: ignore
+
+from kmermaid.batch2 import Batchable
+from kmermaid.parsers import FASTA_SIMPLE_RECORD, ParserBase
 
 
 class SequenceCoords:
@@ -412,7 +416,7 @@ class Sequence(om.Sequence):
             yield Sequence.kmerator(seq2beKmered, k, t, prefix, offset=i, rc=rc)
 
 
-class KMer(Sequence):
+class KMer(Sequence, Batchable):
     """K-mer object.
 
     Extends the Sequence class providing coordinate system and alphabet check.
@@ -469,33 +473,44 @@ class KMer(Sequence):
         return super().__eq__(other)
 
     @staticmethod
-    def from_fasta(record: Tuple[str, str], t: om.NATYPES = om.NATYPES.DNA) -> "KMer":
+    def from_raw(
+        raw: FASTA_SIMPLE_RECORD, /, nat: om.NATYPES = om.NATYPES.DNA
+    ) -> "KMer":
         """Reads a KMer from a Fasta record.
 
-        :param record: (header, sequence)
-        :type record: Tuple[str, str]
-        :param t: nucleic acid type, defaults to om.NATYPES.DNA
-        :type t: om.NATYPES
+        :param raw: (header, sequence)
+        :type raw: FASTA_SIMPLE_RECORD
+        :param nat: nucleic acid type, defaults to om.NATYPES.DNA
+        :type nat: om.NATYPES
         :return: k-mer instance
         :rtype: KMer
         """
-        coords = SequenceCoords.from_str(record[0])
+        coords = SequenceCoords.from_str(raw[0])
         return KMer(
-            coords.ref, coords.start, coords.end, record[1], t, strand=coords.strand
+            coords.ref, coords.start, coords.end, raw[1], nat, strand=coords.strand
         )
 
-    from_file = from_fasta
-
-    @staticmethod
-    def as_fasta(kmer: "KMer") -> str:
+    def to_str(self) -> str:
         """Fasta-like representation.
 
-        :param kmer: to be converted to FASTA
-        :type kmer: KMer
         :return: fasta format
         :rtype: str
         """
-        return f">{kmer.header}\n{kmer.seq}\n"
+        return f">{self.header}\n{self.seq}\n"
+
+    def supports_parser(self, parser: Type[ParserBase]) -> bool:
+        parser_annotation = inspect.signature(parser.parse).return_annotation
+        return parser_annotation == Iterator[FASTA_SIMPLE_RECORD]
+
+    def __lt__(self, other: "KMer") -> bool:
+        """Check if current instance is lower than another instance.
+
+        :param other: other instance
+        :type other: KMer
+        :return: if current instance is lower
+        :rtype: bool
+        """
+        return self.seq < other.seq
 
     def __repr__(self):
         return f"{self.header}\t{self.seq}"
@@ -512,7 +527,7 @@ class KMer(Sequence):
         return all(c in self.ab[0] for c in set(self.text))
 
 
-class SequenceCount(Sequence):
+class SequenceCount(Sequence, Batchable):
     """Sequence counting system.
 
     Retains a sequence and the headers of all the regions where it is present.
@@ -541,31 +556,39 @@ class SequenceCount(Sequence):
         return self.text
 
     @staticmethod
-    def from_text(line: str, t: om.NATYPES = om.NATYPES.DNA) -> "SequenceCount":
+    def from_raw(raw: str, /, nat: om.NATYPES = om.NATYPES.DNA) -> "SequenceCount":
         """Reads a KMer from a FASTA record.
 
-        :param line: sequence
-        :type line: str
-        :param t: nucleic acid type, defaults to om.NATYPES.DNA
-        :type t: om.NATYPES, optional
+        :param raw: sequence
+        :type raw: str
+        :param nat: nucleic acid type, defaults to om.NATYPES.DNA
+        :type nat: om.NATYPES, optional
         :return: class instance
         :rtype: SequenceCount
         """
-        seq, headers = line.strip().split("\t")
-        return SequenceCount(seq, headers.split(" "), t)
+        seq, headers = raw.strip().split("\t")
+        return SequenceCount(seq, headers.split(" "), nat)
 
-    from_file = from_text
+    def supports_parser(self, parser: Type[ParserBase]) -> bool:
+        return inspect.signature(parser.parse).return_annotation == Iterator[str]
+
+    def __lt__(self, other: "SequenceCount") -> bool:
+        """Check if current instance is lower than another instance.
+
+        :param other: other instance
+        :type other: SequenceCount
+        :return: if current instance is lower
+        :rtype: bool
+        """
+        return self.seq < other.seq
 
     def __repr__(self) -> str:
         return f"{self.seq}\t{' '.join(self.header)}"
 
-    @staticmethod
-    def as_text(kmer: "KMer") -> str:
+    def to_str(self) -> str:
         """Returns a text representation of the current instance.
 
-        :param kmer: to be converted to FASTA
-        :type kmer: KMer
         :return: current instance as string
         :rtype: str
         """
-        return f"{kmer}\n"
+        return f"{self}\n"

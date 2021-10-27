@@ -9,9 +9,59 @@ import os
 import pathlib
 import tempfile
 import time
-from typing import Any, Callable, Iterator, List, Optional, Type, Union
+from abc import abstractmethod
+from typing import Any, Iterator, List, Optional, Type
 
 from kmermaid.parsers import ParserBase
+
+
+class Sortable:
+    @abstractmethod
+    def __lt__(self, other: Any) -> bool:
+        """Check if current instance is lower than another instance.
+
+        :param other: other instance
+        :type other: Any
+        :return: if current instance is lower
+        :rtype: bool
+        :raises NotImplementedError: abstract method
+        """
+        raise NotImplementedError
+
+
+class Batchable(Sortable):
+    @staticmethod
+    @abstractmethod
+    def from_raw(raw: Any, /) -> "Batchable":
+        """Raw form to Batchable object conversion.
+
+        :param raw: to be converted to Batchable object
+        :type raw: Any
+        :return: a Batchable object
+        :rtype: Batchable
+        :raises NotImplementedError: abstract method
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def to_str(self) -> str:
+        """Batchable object to String conversion.
+
+        :return: String form of self
+        :rtype: str
+        :raises NotImplementedError: abstract method
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def supports_parser(self, parser: Type[ParserBase]) -> bool:
+        """Whether a parser is supported.
+
+        :param parser: parser to check
+        :type parser: Type[ParserBase]
+        :raises NotImplementedError: abstract method
+        """
+        raise NotImplementedError
 
 
 class Batch:
@@ -35,15 +85,10 @@ class Batch:
     :type _written: bool
     :param parser: for file parsing
     :type parser: ParserBase
-    :param ftorec: function to convert parser output to record
-    :type ftorec: Callable[[_parser_output_type], _record_type]
-    :param ftostr: function to make record writable
-    :type ftostr: Callable[[_record_type], str]
     """
 
-    _record_type: Union[Any]
-    _parser_output_type: Union[Any]
-    _collection: List[Optional["_record_type"]] = []
+    _record_type: Type[Batchable]
+    _collection: List[Batchable] = []
 
     _current_size: int = 0
     _size: int
@@ -58,48 +103,28 @@ class Batch:
     _written: bool = False
 
     _parser: ParserBase
-    _ftorec: Callable[["_parser_output_type"], "_record_type"]
-    _ftostr: Callable[["_record_type"], str]
 
     def __init__(
         self,
-        record_type: Type,
+        record_type: Type[Batchable],
         parser: ParserBase,
-        ftorec: Callable[["_parser_output_type"], "_record_type"],
-        ftostr: Callable[["_record_type"], str],
         size: int = 1,
     ):
         """Initialize Batch
 
         :param record_type: record type
-        :type record_type: Type
+        :type record_type: Type[Batchable]
         :param parser: for file parsing
         :type parser: ParserBase
-        :param ftorec: function to convert parser output to record
-        :type ftorec: Callable[[_parser_output_type], _record_type]
-        :param ftostr: function to make record writable
-        :type ftostr: Callable[[_record_type], str]
         :param size: records per batch, defaults to 1
         :type size: int
         :raises AssertionError: if size is lower than 1
         """
         super().__init__()
         if size < 1:
-            raise AssertionError
+            raise AssertionError("a batch must allocate more than one record")
         self._record_type = record_type
         self._parser = parser
-        self._parser_output_type = parser.OUTPUT_TYPE
-        self._ftorec = ftorec
-        self._ftostr = ftostr
-        self._init_collection(size)
-
-    def _init_collection(self, size: int) -> None:
-        """Initialize batch record collection.
-
-        :param size: records per batch
-        :type size: int
-        """
-        self._collection = [None] * self._size
         self._size = size
 
     @property
@@ -107,7 +132,7 @@ class Batch:
         return self._record_type
 
     @property
-    def collection(self) -> List["_record_type"]:
+    def collection(self) -> List[Batchable]:
         return self._collection.copy()
 
     @property
@@ -161,7 +186,7 @@ class Batch:
         self,
         do_sort: bool = False,
         sort_by: Optional[str] = None,
-    ) -> Iterator["_record_type"]:
+    ) -> Iterator[Batchable]:
         """Generator of records.
 
         :param do_sort: sort records
@@ -176,7 +201,8 @@ class Batch:
             records = (record for record in self._collection if record is not None)
         else:
             records = (
-                self._ftorec(record) for record in self._parser.parse_file(self.temp)
+                self._record_type.from_raw(record)
+                for record in self._parser.parse_file(self.temp)
             )
         if do_sort:
             if sort_by is not None:
@@ -190,11 +216,11 @@ class Batch:
         else:
             yield from records
 
-    def check_record(self, record: "_record_type") -> None:
+    def check_record(self, record: Batchable) -> None:
         """Check that record type matches the Batch.
 
         :param record
-        :type record: _record_type
+        :type record: Batchable
         :raises TypeError: if record type is not compatible
         """
         if not isinstance(record, self._record_type):
@@ -202,7 +228,7 @@ class Batch:
                 f"record must be '{self._record_type}', not '{type(record)}'."
             )
 
-    def add(self, record: "_record_type"):
+    def add(self, record: Batchable):
         """Add a record to the current batch.
 
         Does not work if the batch is full. Also, the record type must match the
@@ -210,7 +236,7 @@ class Batch:
         temporary file (if self.is_appending).
 
         :param record: rercord to be added
-        :type record: _record_type
+        :type record: Batchable
         :raises AssertionError: if batch is full or locally stored
         """
         if self.is_full():
@@ -221,11 +247,11 @@ class Batch:
         self._collection[self._current_size] = record
         self._current_size += 1
 
-    def add_all(self, record_generator: Iterator["_record_type"]) -> None:
+    def add_all(self, record_generator: Iterator[Batchable]) -> None:
         """Add all records from a generator to the current Batch.
 
         :param record_generator: record generator
-        :type record_generator: Iterator[_record_type]
+        :type record_generator: Iterator[Batchable]
         """
         for record in record_generator:
             self.add(record)
@@ -246,9 +272,7 @@ class Batch:
         :yield: record as writable string
         :rtype: Iterator[str]
         """
-        yield from (
-            self._ftostr(record) for record in self.record_gen(do_sort, sort_by)
-        )
+        yield from (record.to_str() for record in self.record_gen(do_sort, sort_by))
 
     def write(
         self, do_sort: bool = False, sort_by: Optional[str] = None, force: bool = False
@@ -272,16 +296,14 @@ class Batch:
                         ]
                     )
                 )
-            self._collection = [None]
+            self._collection = []
             self._written = True
 
     @staticmethod
     def from_file(
         path: pathlib.Path,
-        record_type: Type,
+        record_type: Type[Batchable],
         parser: ParserBase,
-        ftorec: Callable[["_parser_output_type"], "_record_type"],
-        ftostr: Callable[["_record_type"], str],
         do_sort: bool = False,
         sort_by: Optional[str] = None,
     ) -> "Batch":
@@ -292,13 +314,9 @@ class Batch:
         :param path: path to previously generated batch.
         :type path: pathlib.Path
         :param record_type: record type
-        :type record_type: Type
+        :type record_type: Type[Batchable]
         :param parser: for file parsing
         :type parser: ParserBase
-        :param ftorec: function to convert parser output to record
-        :type ftorec: Callable[[_parser_output_type], _record_type]
-        :param ftostr: function to make record writable
-        :type ftostr: Callable[[_record_type], str]
         :param do_sort: sort records
         :type do_sort: bool
         :param sort_by: key for sorting
@@ -307,7 +325,7 @@ class Batch:
         :rtype: Batch
         """
         size = max(2, len(list(parser.parse_file(path))))
-        batch = Batch(record_type, parser, ftorec, ftostr, size)
+        batch = Batch(record_type, parser, size)
         batch._temp = path
         batch._current_size = size
         batch._written = True
@@ -348,21 +366,11 @@ class BatchAppendable(Batch):
     cannot be resized. After full size is reached, a new Batch should be created
     """
 
-    _record_type: Union[Any]
-    _parser_output_type: Union[Any]
+    _record_type: Type[Batchable]
     _parser: ParserBase
 
-    _collection: List[Optional["_record_type"]] = [None]
+    _collection: List[Batchable] = []
     _written: bool = True
-
-    def _init_collection(self, size: int) -> None:
-        """Initialize batch record collection.
-
-        :param size: records per batch
-        :type size: int
-        """
-        self._collection = [None]
-        self._size = size
 
     @property
     def info(self) -> str:
@@ -377,7 +385,7 @@ class BatchAppendable(Batch):
         self,
         do_sort: bool = False,
         sort_by: Optional[str] = None,
-    ) -> Iterator["_record_type"]:
+    ) -> Iterator[Batchable]:
         """Generator of records.
 
         :param do_sort: sort records
@@ -385,11 +393,12 @@ class BatchAppendable(Batch):
         :param sort_by: key for sorting
         :type sort_by: Optional[str]
         :yield: record
-        :rtype: _record_type
+        :rtype: Batchable
         :raises KeyError: if sort_by is not a valid key
         """
         records = (
-            self._ftorec(record) for record in self._parser.parse_file(self.temp)
+            self._record_type.from_raw(record)
+            for record in self._parser.parse_file(self.temp)
         )
         if do_sort:
             if sort_by is None:
@@ -403,7 +412,7 @@ class BatchAppendable(Batch):
         else:
             yield from records
 
-    def add(self, record: "_record_type") -> None:
+    def add(self, record: Batchable) -> None:
         """Add a record to the current batch.
 
         Does not work if the batch is full. Also, the record type must match the
@@ -411,14 +420,14 @@ class BatchAppendable(Batch):
         temporary file (if self.is_appending).
 
         :param record: to add
-        :type record: _record_type
+        :type record: Batchable
         :raises AssertionError: if batch is full
         """
         if self.is_full():
             raise AssertionError("this batch is full")
         self.check_record(record)
         with open(self._temp, "a+") as OH:
-            output = self._ftostr(record)
+            output = record.to_str()
             output = output if output.endswith("\n") else f"{output}\n"
             OH.write(output)
         self._current_size += 1
@@ -450,10 +459,8 @@ class BatchAppendable(Batch):
     @staticmethod
     def from_file(
         path: pathlib.Path,
-        record_type: Type,
+        record_type: Type[Batchable],
         parser: ParserBase,
-        ftorec: Callable[["_parser_output_type"], "_record_type"],
-        ftostr: Callable[["_record_type"], str],
         do_sort: bool = False,
         sort_by: Optional[str] = None,
     ) -> "Batch":
@@ -464,13 +471,9 @@ class BatchAppendable(Batch):
         :param path: path to previously generated batch.
         :type path: pathlib.Path
         :param record_type: record type
-        :type record_type: Type
+        :type record_type: Type[Batchable]
         :param parser: for file parsing
         :type parser: ParserBase
-        :param ftorec: function to convert parser output to record
-        :type ftorec: Callable[[_parser_output_type], _record_type]
-        :param ftostr: function to make record writable
-        :type ftostr: Callable[[_record_type], str]
         :param do_sort: sort records
         :type do_sort: bool
         :param sort_by: key for sorting
@@ -479,7 +482,7 @@ class BatchAppendable(Batch):
         :rtype: Batch
         """
         size = max(2, len(list(parser.parse_file(path))))
-        batch = BatchAppendable(record_type, parser, ftorec, ftostr, size)
+        batch = BatchAppendable(record_type, parser, size)
         batch._temp = path
         batch._current_size = size
 
