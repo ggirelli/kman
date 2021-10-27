@@ -43,6 +43,7 @@ def add_click_hooks(f: Callable[..., None]):
     @args.tmp()
     @args.re_sort()
     def wrapper(*args, **kwargs):
+        """Decorator wrapper."""
         f(*args, **kwargs)
 
     return wrapper

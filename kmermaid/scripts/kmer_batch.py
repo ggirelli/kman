@@ -47,6 +47,7 @@ def add_click_hooks(f: Callable[..., None]):
     @args.tmp()
     @args.compress()
     def wrapper(*args, **kwargs):
+        """Decorator wrapper."""
         f(*args, **kwargs)
 
     return wrapper
