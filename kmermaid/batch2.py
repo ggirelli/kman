@@ -30,7 +30,7 @@ class Sortable:
         :rtype: bool
         :raises NotImplementedError: abstract method
         """
-        ...
+        raise NotImplementedError
 
 
 class Batchable(Sortable):
