@@ -331,7 +331,7 @@ class Batch:
                 size = max(2, sum(1 for _ in FH))
 
         batch = Batch(t, os.path.dirname(path), size)
-        batch._tmp = path.name
+        batch._tmp = str(path.resolve())
         batch._i = size
         batch._remaining = 0
         batch._written = True
@@ -522,8 +522,8 @@ class BatchAppendable(Batch):
             with path.open("r+") as FH:
                 size = max(2, sum(1 for _ in FH))
 
-        batch = BatchAppendable(t, os.path.dirname(path), size)
-        batch._tmp = path.name
+        batch = BatchAppendable(t, str(path.parent), size)
+        batch._tmp = str(path.resolve())
         batch._i = size
         batch._remaining = 0
         batch._written = True

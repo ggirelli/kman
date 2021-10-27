@@ -4,6 +4,7 @@
 """
 
 import os
+import pathlib
 
 from kmermaid.batch import Batch, BatchAppendable
 
@@ -57,7 +58,7 @@ def test_Batch():
     assert b.current_size == 4
     assert len(list(b.record_gen())) == 4
 
-    b2 = b.from_file(b.tmp, str, False)
+    b2 = b.from_file(pathlib.Path(b.tmp), str, False)
     b2.isFasta = False
     b2.fwrite = "__str__"
     b2.fread = "__str__"
@@ -145,7 +146,7 @@ def continue_test_BatchAppendable_3(b: Batch):
 
     assert list(b.record_gen()) == list(b.to_write())
 
-    b2 = b.from_file(b.tmp, str, False)
+    b2 = b.from_file(pathlib.Path(b.tmp), str, False)
     b2.isFasta = False
     b2.fwrite = "__str__"
     b2.fread = "__str__"

@@ -39,8 +39,8 @@ class FastaParserBase:
         """
         raise NotImplementedError
 
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def parse_file(path: pathlib.Path) -> Iterator[FASTA_SIMPLE_RECORD]:
         """Parse a FASTA file (static method).
 
