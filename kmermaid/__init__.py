@@ -5,7 +5,7 @@
 
 from importlib.metadata import version
 
-from kmermaid import abundance, batch, batcher, const, io, join, seq
+from kmermaid import abundance, batch, batch2, batcher, const, io, join, seq
 
 try:
     __version__ = version(__name__)
@@ -16,6 +16,7 @@ __all__ = [
     "__version__",
     "abundance",
     "batch",
+    "batch2",
     "batcher",
     "const",
     "io",

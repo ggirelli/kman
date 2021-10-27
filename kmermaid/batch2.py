@@ -59,6 +59,8 @@ class Batchable(Sortable):
 
         :param parser: parser to check
         :type parser: Type[ParserBase]
+        :return: if parser is supported
+        :rtype: bool
         :raises NotImplementedError: abstract method
         """
         raise NotImplementedError

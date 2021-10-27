@@ -499,6 +499,13 @@ class KMer(Sequence, Batchable):
         return f">{self.header}\n{self.seq}\n"
 
     def supports_parser(self, parser: Type[ParserBase]) -> bool:
+        """Whether a parser is supported.
+
+        :param parser: parser to check
+        :type parser: Type[ParserBase]
+        :return: if parser is supported
+        :rtype: bool
+        """
         parser_annotation = inspect.signature(parser.parse).return_annotation
         return parser_annotation == Iterator[FASTA_SIMPLE_RECORD]
 
@@ -570,6 +577,13 @@ class SequenceCount(Sequence, Batchable):
         return SequenceCount(seq, headers.split(" "), nat)
 
     def supports_parser(self, parser: Type[ParserBase]) -> bool:
+        """Whether a parser is supported.
+
+        :param parser: parser to check
+        :type parser: Type[ParserBase]
+        :return: if parser is supported
+        :rtype: bool
+        """
         return inspect.signature(parser.parse).return_annotation == Iterator[str]
 
     def __lt__(self, other: "SequenceCount") -> bool:
