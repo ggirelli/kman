@@ -16,6 +16,8 @@ from kmermaid.parsers import ParserBase
 
 
 class Sortable:
+    """Class that can be sorted."""
+
     @abstractmethod
     def __lt__(self, other: Any) -> bool:
         """Check if current instance is lower than another instance.
@@ -30,6 +32,8 @@ class Sortable:
 
 
 class Batchable(Sortable):
+    """Class that can be collected in a Batch."""
+
     @staticmethod
     @abstractmethod
     def from_raw(raw: Any, /) -> "Batchable":
