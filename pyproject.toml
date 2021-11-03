@@ -42,7 +42,7 @@ mypy = "^0.910"
 black = "^21.10b0"
 safety = "^1.10.3"
 bandit = "^1.7.0"
-isort = "^5.9.3"
+isort = "^5.10.0"
 darglint = "^1.8.1"
 
 [build-system]
