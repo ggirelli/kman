@@ -153,7 +153,7 @@ def prep_joiner(
     :rtype: KJoinerThreading
     """
     joiner.threads = threads
-    joiner.batch_size = max(2, int(n_batches / threads))
+    joiner.batch_size = max(2, n_batches // threads)
     rlim_min, rlim_max = resource.getrlimit(resource.RLIMIT_NOFILE)
     joiner.batch_size = min(joiner.batch_size, rlim_max)
     resource.setrlimit(
