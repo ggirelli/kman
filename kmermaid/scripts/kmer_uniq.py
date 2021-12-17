@@ -122,5 +122,5 @@ def get_joiner(n_batches: int, threads: int = 1) -> KJoinerThreading:
     """
     joiner = KJoinerThreading()
     joiner.threads = threads
-    joiner.batch_size = max(2, int(n_batches / threads))
+    joiner.batch_size = max(2, n_batches // threads)
     return joiner
