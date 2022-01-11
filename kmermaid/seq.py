@@ -467,9 +467,7 @@ class KMer(Sequence, Batchable):
         return self.text
 
     def __eq__(self, other):
-        if not self.coords == other.coords:
-            return False
-        return super().__eq__(other)
+        return False if not self.coords == other.coords else super().__eq__(other)
 
     @staticmethod
     def from_raw(raw: FASTA_SIMPLE_RECORD, /, **kwargs) -> KMer:
