@@ -30,7 +30,7 @@ biopython = "^1.78"
 click = "^8.0.3"
 h5py = "^3.6.0"
 joblib = "^1.0.1"
-numpy = "^1.22.1"
+numpy = "^1.22.2"
 oligo_melting = {git = "https://github.com/ggirelli/oligo-melting", rev = "301b2c8"}
 rich = ">=9.10,<12.0"
 tqdm = "^4.58.0"
