@@ -12,7 +12,7 @@ from typing import List
 
 from tqdm import tqdm  # type: ignore
 
-from kmermaid.batch import Batch
+from kmermaid.batch2 import Batch
 
 
 def set_tempdir(path: str, create: bool = True) -> None:
@@ -56,7 +56,7 @@ def copy_batches(
     :type compress: bool
     """
     batch_list = tqdm(
-        (batch for batch in batches if os.path.isfile(batch.tmp)),
+        (batch for batch in batches if os.path.isfile(batch.temp)),
         total=len(batches),
     )
     for current_batch in batch_list:

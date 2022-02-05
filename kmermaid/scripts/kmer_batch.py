@@ -5,7 +5,9 @@
 
 import logging
 import os
+import pathlib
 import tempfile
+from typing import Callable
 
 import click  # type: ignore
 
@@ -15,26 +17,43 @@ from kmermaid.io import copy_batches, input_file_exists, set_tempdir
 from kmermaid.scripts import arguments as args
 
 
-@click.command(
-    name="batch",
-    context_settings=CONTEXT_SETTINGS,
-    help="""
-Generate batches of k-mers from an INPUT fasta file.
+def add_click_hooks(f: Callable[..., None]):
+    """Click hook decorator.
 
-Batches are written to an OUTPUT folder, which must be empty or non-existent.
-The INPUT file can be gzipped.
-""",
-)
-@args.input_path()
-@args.output_path(dir_okay=True)
-@args.k()
-@args.reverse()
-@args.scan_mode()
-@args.batch_size()
-@args.batch_mode()
-@args.threads()
-@args.tmp()
-@args.compress()
+    :param f: run function
+    :type f: Callable[..., None]
+    :return: decorated f
+    :rtype: Callable[..., None]
+    """
+
+    @click.command(
+        name="batch",
+        context_settings=CONTEXT_SETTINGS,
+        help="""
+    Generate batches of k-mers from an INPUT fasta file.
+
+    Batches are written to an OUTPUT folder, which must be empty or non-existent.
+    The INPUT file can be gzipped.
+    """,
+    )
+    @args.input_path()
+    @args.output_path(dir_okay=True)
+    @args.k()
+    @args.reverse()
+    @args.scan_mode()
+    @args.batch_size()
+    @args.batch_mode()
+    @args.threads()
+    @args.tmp()
+    @args.compress()
+    def wrapper(*args, **kwargs):
+        """Decorator wrapper."""
+        f(*args, **kwargs)
+
+    return wrapper
+
+
+@add_click_hooks
 def run(
     input_path: str,
     output_path: str,
@@ -80,7 +99,7 @@ def run(
                 size=batch_size,
                 threads=threads,
             )
-            .do(input_path, k, BatcherThreading.FEED_MODE[batch_mode])
+            .do(pathlib.Path(input_path), k, BatcherThreading.FEED_MODE[batch_mode])
             .collection,
             output_path,
             compress,

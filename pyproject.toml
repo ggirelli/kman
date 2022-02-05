@@ -28,21 +28,21 @@ include = [
 python = "^3.8"
 biopython = "^1.78"
 click = "^8.0.3"
-h5py = "^3.2.1"
+h5py = "^3.6.0"
 joblib = "^1.0.1"
-numpy = "^1.20.1"
+numpy = "^1.22.2"
 oligo_melting = {git = "https://github.com/ggirelli/oligo-melting", rev = "301b2c8"}
-rich = ">=9.10,<11.0"
+rich = ">=9.10,<12.0"
 tqdm = "^4.58.0"
 
 [tool.poetry.dev-dependencies]
-pytest = "^6.2.5"
+pytest = "^7.0.0"
 flake8 = "^4.0.1"
-mypy = "^0.910"
-black = "^21.9b0"
+mypy = "^0.931"
+black = "^22.1"
 safety = "^1.10.3"
-bandit = "^1.7.0"
-isort = "^5.9.3"
+bandit = "^1.7.2"
+isort = "^5.10.1"
 darglint = "^1.8.1"
 
 [build-system]

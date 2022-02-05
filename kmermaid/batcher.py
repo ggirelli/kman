@@ -4,14 +4,14 @@
 @description: methods for batching
 """
 
-import gzip
 import itertools
 import logging
 import multiprocessing as mp
 import os
+import pathlib
 import tempfile
 from enum import Enum
-from typing import IO, Any, List, Optional, Tuple, Type, Union
+from typing import Any, List, Optional, Tuple, Type, Union
 
 import oligo_melting as om  # type: ignore
 from joblib import Parallel, delayed  # type: ignore
@@ -277,7 +277,7 @@ class BatcherThreading(BatcherBase):
         threads = max(1, min(threads, mp.cpu_count()))
         if threads == 1:
             return [
-                Batch.from_file(os.path.join(dirPath, fname), t, isFasta)
+                Batch.from_file(pathlib.Path(dirPath, fname), t, isFasta)
                 for fname in tqdm(os.listdir(dirPath))
             ]
         return Parallel(n_jobs=threads, verbose=11)(
@@ -370,21 +370,21 @@ class FastaBatcher(BatcherThreading):
 
     def __do_over_kmers(
         self,
-        FH: IO,
+        path: pathlib.Path,
         k: int,
         feedMode: BatcherThreading.FEED_MODE = BatcherThreading.FEED_MODE.APPEND,
     ):
         """Parallelize over kmers.
 
-        :param FH: Fasta file handle
-        :type FH: IO
+        :param path: path to FASTA file
+        :type path: pathlib.Path
         :param k: k-mer length
         :type k: int
         :param feedMode: feeding mode, defaults to BatcherThreading.FEED_MODE.APPEND
         :type feedMode: BatcherThreading.FEED_MODE, optional
         """
         batcher = FastaRecordBatcher.from_parent(self)
-        for record in SmartFastaParser(FH).parse():
+        for record in SmartFastaParser(path).parse():
             batcher.do(record, k)
             for batch in batcher.collection:
                 batch.unwrite()
@@ -393,7 +393,7 @@ class FastaBatcher(BatcherThreading):
 
     def __do_over_records(
         self,
-        FH: IO,
+        path: pathlib.Path,
         k: int,
         feedMode: BatcherThreading.FEED_MODE = BatcherThreading.FEED_MODE.APPEND,
     ):
@@ -401,8 +401,8 @@ class FastaBatcher(BatcherThreading):
 
         Run a non-parallelized RecordBatcher for each fasta record, in parallel.
 
-        :param FH: fasta file handle.
-        :type FH: IO
+        :param path: path to FASTA file
+        :type path: pathlib.Path
         :param k: k-mer length
         :type k: int
         :param feedMode: feeding mode, defaults to BatcherThreading.FEED_MODE.APPEND
@@ -434,7 +434,7 @@ class FastaBatcher(BatcherThreading):
 
         batchCollections = Parallel(n_jobs=self.threads, verbose=11)(
             delayed(do_record)(self.size, self.natype, self.tmp, record, k)
-            for record in SmartFastaParser(FH).parse()
+            for record in SmartFastaParser(path).parse()
         )
 
         self.feed_collection(list(itertools.chain(*batchCollections)), feedMode)
@@ -453,16 +453,16 @@ class FastaBatcher(BatcherThreading):
 
     def do(
         self,
-        fasta: str,
+        path: pathlib.Path,
         k: int,
         feedMode: BatcherThreading.FEED_MODE = BatcherThreading.FEED_MODE.APPEND,
     ) -> "FastaBatcher":
-        """Start batching a fasta file.
+        """Start batching a FASTA file.
 
-        Batch a fasta file up to the specified number of k-mers.
+        Batch a FASTA file up to the specified number of k-mers.
 
-        :param fasta: path to fasta file
-        :type fasta: str
+        :param path: path to FASTA file
+        :type path: pathlib.Path
         :param k: k-mer length
         :type k: int
         :param feedMode: feeding mode, defaults to BatcherThreading.FEED_MODE.APPEND
@@ -472,18 +472,16 @@ class FastaBatcher(BatcherThreading):
         :raises AssertionError: if input is not a file
         :raises AssertionError: if k is lower than or equal to 1
         """
-        if not os.path.isfile(fasta):
-            raise AssertionError(f"input file not found: {fasta}")
+        if not path.is_file():
+            raise AssertionError(f"input file not found: {path}")
         if k <= 1:
             raise AssertionError(f"k must be >= 1, got {k} instead.")
 
-        FH = gzip.open(fasta, "rt") if fasta.endswith(".gz") else open(fasta, "r+")
         if self._mode == self.MODE.KMERS:
-            self.__do_over_kmers(FH, k, feedMode)
+            self.__do_over_kmers(path, k, feedMode)
         elif self._mode == self.MODE.RECORDS:
-            self.__do_over_records(FH, k, feedMode)
+            self.__do_over_records(path, k, feedMode)
 
-        FH.close()
         return self
 
 

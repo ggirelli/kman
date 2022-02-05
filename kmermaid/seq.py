@@ -3,13 +3,18 @@
 @contact: gigi.ga90@gmail.com
 @description: sequence management systems
 """
+from __future__ import annotations
 
+import inspect
 import logging
 import re
 from enum import Enum, unique
-from typing import Iterator, List, Tuple
+from typing import Iterator, List, Tuple, Type
 
 import oligo_melting as om  # type: ignore
+
+from kmermaid.batch2 import Batchable
+from kmermaid.parsers import FASTA_SIMPLE_RECORD, ParserBase
 
 
 class SequenceCoords:
@@ -148,7 +153,7 @@ class Sequence(om.Sequence):
             raise AssertionError("sequence type must be from om.NATYPES")
         super().__init__(seq, t, name)
 
-    def kmers(self, k: int) -> Iterator["Sequence"]:
+    def kmers(self, k: int) -> Iterator[Sequence]:
         """Extract k-mers from Sequence.
 
         :param k: k-mer length.
@@ -177,9 +182,7 @@ class Sequence(om.Sequence):
         """
         return self.batcher(self.text, k, batchSize)
 
-    def kmers_batched(
-        self, k: int, batchSize: int = 1
-    ) -> Iterator[Iterator["Sequence"]]:
+    def kmers_batched(self, k: int, batchSize: int = 1) -> Iterator[Iterator[Sequence]]:
         """Extract batches of k-mers from Sequence.
 
         :param k: k-mer length
@@ -213,7 +216,7 @@ class Sequence(om.Sequence):
         t: om.NATYPES,
         offset: int,
         strand: SequenceCoords.STRAND,
-    ) -> Iterator["KMer"]:
+    ) -> Iterator[KMer]:
         """Yield a k-mer.
 
         :param i: k-mer start position
@@ -251,7 +254,7 @@ class Sequence(om.Sequence):
         t: om.NATYPES,
         offset: int,
         strand: SequenceCoords.STRAND,
-    ) -> Iterator["KMer"]:
+    ) -> Iterator[KMer]:
         """Yield a k-mer and its reverse complement.
 
         :param i: k-mer start position
@@ -290,7 +293,7 @@ class Sequence(om.Sequence):
         offset: int,
         strand: SequenceCoords.STRAND,
         rc: bool,
-    ) -> Iterator["KMer"]:
+    ) -> Iterator[KMer]:
         """Extract k-mers from sequence.
 
         :param seq: sequence
@@ -336,7 +339,7 @@ class Sequence(om.Sequence):
         offset: "int" = 0,
         strand: SequenceCoords.STRAND = SequenceCoords.STRAND.PLUS,
         rc=False,
-    ) -> Iterator["KMer"]:
+    ) -> Iterator[KMer]:
         """Extract k-mers from sequence.
 
         :param seq: sequence
@@ -385,7 +388,7 @@ class Sequence(om.Sequence):
     @staticmethod
     def kmerator_batched(
         seq: str, k: int, t: om.NATYPES, batchSize: int = 1, prefix="ref", rc=False
-    ) -> Iterator[Iterator["Sequence"]]:
+    ) -> Iterator[Iterator[Sequence]]:
         """Extract batches of k-mers from sequence.
 
         :param seq: sequence
@@ -412,7 +415,7 @@ class Sequence(om.Sequence):
             yield Sequence.kmerator(seq2beKmered, k, t, prefix, offset=i, rc=rc)
 
 
-class KMer(Sequence):
+class KMer(Sequence, Batchable):
     """K-mer object.
 
     Extends the Sequence class providing coordinate system and alphabet check.
@@ -464,38 +467,68 @@ class KMer(Sequence):
         return self.text
 
     def __eq__(self, other):
-        if not self.coords == other.coords:
-            return False
-        return super().__eq__(other)
+        return False if not self.coords == other.coords else super().__eq__(other)
 
     @staticmethod
-    def from_fasta(record: Tuple[str, str], t: om.NATYPES = om.NATYPES.DNA) -> "KMer":
+    def from_raw(raw: FASTA_SIMPLE_RECORD, /, **kwargs) -> KMer:
         """Reads a KMer from a Fasta record.
 
-        :param record: (header, sequence)
-        :type record: Tuple[str, str]
-        :param t: nucleic acid type, defaults to om.NATYPES.DNA
-        :type t: om.NATYPES
+        :param raw: (header, sequence)
+        :type raw: FASTA_SIMPLE_RECORD
+        :param **kwargs: see below
         :return: k-mer instance
         :rtype: KMer
+
+        :raises AssertionError: if 'nat' kwarg is not om.NATYPES
+
+        :Keyword Arguments:
+            * nat (om.NATYPES) -- nucleic acid type, defaults to om.NATYPES.DNA
         """
-        coords = SequenceCoords.from_str(record[0])
+        if "nat" not in kwargs:
+            kwargs["nat"] = om.NATYPES.DNA
+        elif not isinstance(kwargs["nat"], om.NATYPES):
+            raise AssertionError(f"'nat' argument should be of {om.NATYPES} type")
+        coords = SequenceCoords.from_str(raw[0])
         return KMer(
-            coords.ref, coords.start, coords.end, record[1], t, strand=coords.strand
+            coords.ref,
+            coords.start,
+            coords.end,
+            raw[1],
+            kwargs["nat"],
+            strand=coords.strand,
         )
 
-    from_file = from_fasta
-
-    def as_fasta(self) -> str:
+    def to_str(self) -> str:
         """Fasta-like representation.
 
         :return: fasta format
         :rtype: str
         """
-        return ">%s\n%s\n" % (self.header, self.seq)
+        return f">{self.header}\n{self.seq}\n"
+
+    def supports_parser(self, parser: Type[ParserBase]) -> bool:
+        """Whether a parser is supported.
+
+        :param parser: parser to check
+        :type parser: Type[ParserBase]
+        :return: if parser is supported
+        :rtype: bool
+        """
+        parser_annotation = inspect.signature(parser.parse).return_annotation
+        return parser_annotation == Iterator[FASTA_SIMPLE_RECORD]
+
+    def __lt__(self, other: KMer) -> bool:
+        """Check if current instance is lower than another instance.
+
+        :param other: other instance
+        :type other: KMer
+        :return: if current instance is lower
+        :rtype: bool
+        """
+        return self.seq < other.seq
 
     def __repr__(self):
-        return "%s\t%s" % (self.header, self.seq)
+        return f"{self.header}\t{self.seq}"
 
     def is_ab_checked(self) -> bool:
         """Check if AB is fully respected.
@@ -509,7 +542,7 @@ class KMer(Sequence):
         return all(c in self.ab[0] for c in set(self.text))
 
 
-class SequenceCount(Sequence):
+class SequenceCount(Sequence, Batchable):
     """Sequence counting system.
 
     Retains a sequence and the headers of all the regions where it is present.
@@ -538,28 +571,55 @@ class SequenceCount(Sequence):
         return self.text
 
     @staticmethod
-    def from_text(line: str, t: om.NATYPES = om.NATYPES.DNA) -> "SequenceCount":
-        """Reads a KMer from a FASTA record.
+    def from_raw(raw: str, /, **kwargs) -> SequenceCount:
+        """Reads a KMer from a Fasta record.
 
-        :param line: sequence
-        :type line: str
-        :param t: nucleic acid type, defaults to om.NATYPES.DNA
-        :type t: om.NATYPES, optional
-        :return: class instance
+        :param raw: line
+        :type raw: str
+        :param **kwargs: see below
+        :return: sequence count instance
         :rtype: SequenceCount
-        """
-        seq, headers = line.strip().split("\t")
-        return SequenceCount(seq, headers.split(" "), t)
 
-    from_file = from_text
+        :raises AssertionError: if 'nat' kwarg is missing
+        :raises AssertionError: if 'nat' kwarg is not om.NATYPES
+
+        :Keyword Arguments:
+            * nat (om.NATYPES) -- nucleic acid type, defaults to om.NATYPES.DNA
+        """
+        if "nat" not in kwargs:
+            kwargs["nat"] = om.NATYPES.DNA
+        elif not isinstance(kwargs["nat"], om.NATYPES):
+            raise AssertionError(f"'nat' argument should be of {om.NATYPES} type")
+        seq, headers = raw.strip().split("\t")
+        return SequenceCount(seq, headers.split(" "), kwargs["nat"])
+
+    def supports_parser(self, parser: Type[ParserBase]) -> bool:
+        """Whether a parser is supported.
+
+        :param parser: parser to check
+        :type parser: Type[ParserBase]
+        :return: if parser is supported
+        :rtype: bool
+        """
+        return inspect.signature(parser.parse).return_annotation == Iterator[str]
+
+    def __lt__(self, other: "SequenceCount") -> bool:
+        """Check if current instance is lower than another instance.
+
+        :param other: other instance
+        :type other: SequenceCount
+        :return: if current instance is lower
+        :rtype: bool
+        """
+        return self.seq < other.seq
 
     def __repr__(self) -> str:
-        return "%s\t%s" % (self.seq, " ".join(self.header))
+        return f"{self.seq}\t{' '.join(self.header)}"
 
-    def as_text(self) -> str:
+    def to_str(self) -> str:
         """Returns a text representation of the current instance.
 
         :return: current instance as string
         :rtype: str
         """
-        return str(self) + "\n"
+        return f"{self}\n"
